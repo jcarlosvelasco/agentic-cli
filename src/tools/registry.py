@@ -1,8 +1,8 @@
 from typing import List
 
 from src.tools.interfaces.Tool import Tool
-from src.tools.registry.bash import BashTool
-from src.tools.registry.weather import WeatherTool
+from src.tools.tools.bash import BashTool
+from src.tools.tools.weather import WeatherTool
 
 TOOLS: List[Tool] = [BashTool(), WeatherTool()]
 TOOLS_BY_NAME = {tool.name: tool for tool in TOOLS}

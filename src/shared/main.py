@@ -5,7 +5,7 @@ from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.llm.schema.Message import Message, MessageRole
 from src.tools.interfaces.Tool import Tool
-from src.tools.registry.registry_core import get_tool_by_name, get_tools
+from src.tools.registry import get_tool_by_name, get_tools
 from src.tools.ToolRunner import ToolRunner
 
 

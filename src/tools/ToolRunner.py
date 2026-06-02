@@ -12,4 +12,4 @@ class ToolRunner:
             print("Canceled execution")
             return None
 
-        return tool.execute(input)
+        return tool.execute(tool_input)

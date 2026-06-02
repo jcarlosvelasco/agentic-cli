@@ -4,20 +4,25 @@ from typing import List
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.llm.schema.Message import Message, MessageRole
+from src.tools.interfaces.Tool import Tool
+from src.tools.registry import get_tools
+from src.tools.ToolRunner import ToolRunner
 
 
 async def main():
     messages: List[Message] = []
+    tools = get_tools()
+    runner = ToolRunner()
 
     while True:
         user_input = input("You: ")
         messages.append(Message(role=MessageRole.USER, content=user_input))
-        await agentLoop(messages)
+        await agentLoop(messages, tools, runner)
 
 
-async def agentLoop(messages: List[Message]):
+async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunner):
     provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
-    response = await provider.chat(messages, tools=[])
+    response = await provider.chat(messages, tools=tools)
     print(f"Agent: {response.content}")
 
 

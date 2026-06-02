@@ -6,6 +6,15 @@ from pydantic import BaseModel
 ArgsT = TypeVar("ArgsT", bound=BaseModel)
 
 
+class ToolResult:
+    def __init__(
+        self, success: bool, message: str | None = None, data: dict | None = None
+    ):
+        self.success = success
+        self.message = message
+        self.data = data
+
+
 class Tool(ABC, Generic[ArgsT]):
     name: str
     description: str
@@ -22,5 +31,5 @@ class Tool(ABC, Generic[ArgsT]):
         self.args_schema = args_schema
 
     @abstractmethod
-    def execute(self, args: ArgsT | None) -> None:
+    def execute(self, args: ArgsT | None) -> ToolResult:
         pass

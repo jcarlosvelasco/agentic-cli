@@ -9,6 +9,7 @@ from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.ChatTimeoutError import ChatTimeoutError
 from src.llm.schema.LLMChatResponse import LLMChatResponse
 from src.llm.schema.Message import Message
+from src.llm.schema.ToolCall import ToolCall
 from src.tools.interfaces.Tool import Tool
 
 
@@ -94,4 +95,20 @@ class OllamaProvider(BaseLLMProvider):
                 response.status_code,
             )
 
-        return LLMChatResponse(content=data["message"]["content"])
+        print(f"Response: {data}")
+
+        message = data["message"]
+
+        tool_calls: List[ToolCall] = []
+        for call in message.get("tool_calls", []):
+            tool_calls.append(
+                ToolCall(
+                    id=call["id"],
+                    name=call["function"]["name"],
+                    args=call["function"]["arguments"],
+                )
+            )
+
+        return LLMChatResponse(
+            content=data["message"]["content"], tool_calls=tool_calls
+        )

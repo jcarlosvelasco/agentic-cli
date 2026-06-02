@@ -23,7 +23,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: ty
-        run: ty check
+        run: uv run ty check
 
   lint:
     name: python
@@ -41,4 +41,4 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: ruff
-        run: ruff check
+        run: uv run ruff check

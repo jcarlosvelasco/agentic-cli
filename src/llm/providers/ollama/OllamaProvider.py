@@ -95,8 +95,6 @@ class OllamaProvider(BaseLLMProvider):
                 response.status_code,
             )
 
-        print(f"Response: {data}")
-
         message = data["message"]
 
         tool_calls: List[ToolCall] = []

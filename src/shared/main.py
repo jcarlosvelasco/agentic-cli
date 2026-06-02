@@ -23,8 +23,6 @@ async def main():
 async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunner):
     provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
     response = await provider.chat(messages, tools=tools)
-    print(f"Response: {response}")
-    print(f"Agent: {response.content}")
 
     if response.has_tool_calls:
         for call in response.tool_calls:

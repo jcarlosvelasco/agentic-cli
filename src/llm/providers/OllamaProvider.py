@@ -1,10 +1,14 @@
+from typing import List
+
 import httpx
+from pydantic.fields import TypedDict
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.ChatConnectionError import ChatConnectionError
 from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.ChatTimeoutError import ChatTimeoutError
 from src.llm.schema.LLMChatResponse import LLMChatResponse
+from src.llm.schema.Message import Message
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -18,15 +22,23 @@ class OllamaProvider(BaseLLMProvider):
         self.base_url = base_url
         self.temperature = temperature
 
-    async def chat(self, prompt: str) -> LLMChatResponse:
+    class OllamaMessage(TypedDict):
+        role: str
+        content: str
+
+    def format_messages(self, messages: List[Message]) -> List[OllamaMessage]:
+        return [
+            {
+                "role": message.role.value,
+                "content": message.content,
+            }
+            for message in messages
+        ]
+
+    async def chat(self, messages: List[Message]) -> LLMChatResponse:
         payload = {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
+            "messages": self.format_messages(messages),
             "stream": False,
             "options": {
                 "temperature": self.temperature,

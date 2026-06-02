@@ -1,14 +1,15 @@
-from typing import List
+from typing import Any, List
 
 import httpx
-from pydantic.fields import TypedDict
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
+from src.llm.providers.ollama.OllamaMessage import OllamaMessage
 from src.llm.schema.ChatConnectionError import ChatConnectionError
 from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.ChatTimeoutError import ChatTimeoutError
 from src.llm.schema.LLMChatResponse import LLMChatResponse
 from src.llm.schema.Message import Message
+from src.tools.interfaces.Tool import Tool
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -16,17 +17,14 @@ class OllamaProvider(BaseLLMProvider):
         self,
         model: str,
         base_url: str = "http://localhost:11434/api",
-        temperature: float = 0.0,
     ):
         self.model = model
         self.base_url = base_url
-        self.temperature = temperature
 
-    class OllamaMessage(TypedDict):
-        role: str
-        content: str
-
-    def format_messages(self, messages: List[Message]) -> List[OllamaMessage]:
+    def format_messages(
+        self,
+        messages: List[Message],
+    ) -> List[OllamaMessage]:
         return [
             {
                 "role": message.role.value,
@@ -35,14 +33,32 @@ class OllamaProvider(BaseLLMProvider):
             for message in messages
         ]
 
-    async def chat(self, messages: List[Message]) -> LLMChatResponse:
+    def get_ollama_schema(self, tool: Tool) -> dict[str, Any]:
+        schema = {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+            },
+        }
+
+        if tool.args_schema:
+            json_schema = tool.args_schema.model_json_schema()
+            schema["function"]["parameters"] = json_schema
+
+        return schema
+
+    async def chat(
+        self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
+    ) -> LLMChatResponse:
         payload = {
             "model": self.model,
             "messages": self.format_messages(messages),
             "stream": False,
             "options": {
-                "temperature": self.temperature,
+                "temperature": temperature,
             },
+            "tools": [self.get_ollama_schema(tool) for tool in tools],
         }
 
         try:

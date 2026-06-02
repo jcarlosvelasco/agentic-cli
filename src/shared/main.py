@@ -2,7 +2,7 @@ import asyncio
 from typing import List
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
-from src.llm.providers.OllamaProvider import OllamaProvider
+from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.llm.schema.Message import Message, MessageRole
 
 
@@ -17,7 +17,7 @@ async def main():
 
 async def agentLoop(messages: List[Message]):
     provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
-    response = await provider.chat(messages)
+    response = await provider.chat(messages, tools=[])
     print(f"Agent: {response.content}")
 
 

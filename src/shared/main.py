@@ -54,6 +54,7 @@ async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunn
                     content=response.content,
                 )
             )
+            print("Agent:", response.content)
             break
 
 

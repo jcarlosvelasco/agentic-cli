@@ -26,9 +26,9 @@ class OllamaProvider(BaseLLMProvider):
         self,
         messages: List[Message],
     ) -> List[OllamaMessage]:
-        result = []
+        result: List[OllamaMessage] = []
         for message in messages:
-            msg: dict = {
+            msg: OllamaMessage = {
                 "role": message.role.value,
                 "content": message.content,
             }

@@ -1,4 +1,4 @@
-from typing import Any, List, TypedDict
+from typing import Any, List, NotRequired, TypedDict
 
 
 class OllamaToolCallFunction(TypedDict):
@@ -14,5 +14,5 @@ class OllamaToolCall(TypedDict):
 class OllamaMessage(TypedDict):
     role: str
     content: str
-    tools: List[OllamaToolCall]
-    tool_call_id: str
+    tool_calls: NotRequired[List[OllamaToolCall]]
+    tool_call_id: NotRequired[str]

@@ -1,6 +1,8 @@
 import asyncio
 from typing import List
 
+from src.compaction.CompactionRunner import run_compaction
+from src.compaction.CompactionStrategy import CompactionStrategy
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.llm.schema.Message import Message, MessageRole
@@ -21,6 +23,8 @@ async def main():
 
 
 async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunner):
+    await run_compaction(strategy=CompactionStrategy.SUMMARIZATION, messages=messages)
+
     provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
 
     while True:

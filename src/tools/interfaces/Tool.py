@@ -1,18 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Generic, Type, TypeVar
+from typing import Any, Generic, Type, TypeVar
 
 from pydantic import BaseModel
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)
 
 
-class ToolResult:
-    def __init__(
-        self, success: bool, message: str | None = None, data: dict | None = None
-    ):
-        self.success = success
-        self.message = message
-        self.data = data
+class ToolResult(BaseModel):
+    success: bool
+    message: str | None = None
+    data: dict[str, Any] | None = None
 
 
 class Tool(ABC, Generic[ArgsT]):

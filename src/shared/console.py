@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncGenerator
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -62,6 +62,6 @@ def confirm_execution(tool_name: str, tool_input: object) -> bool:
 
 
 @asynccontextmanager
-async def thinking_spinner() -> AsyncIterator[None]:
+async def thinking_spinner() -> AsyncGenerator[None, None]:
     with console.status("[yellow]Thinking...[/]", spinner="dots"):
         yield

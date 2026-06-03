@@ -1,6 +1,6 @@
 # coding-agent
 
-**coding-agent** is a minimal, modular conversational agent framework that connects a local LLM (Ollama) with user-defined tools. The agent receives instructions, decides whether to call a tool, and displays the response to the user.
+**coding-agent** is a minimal, modular conversational agent framework that connects a local LLM (Ollama) with user-defined tools. The agent receives instructions, decides whether to call a tool, and displays the response to the user. It features a terminal UI built with [Rich](https://github.com/Textualize/rich).
 
 ## Requirements
 

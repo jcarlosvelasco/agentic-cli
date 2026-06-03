@@ -17,6 +17,8 @@ class BashTool(Tool[BashToolArgs]):
 
     def execute(self, args: BashToolArgs | None) -> ToolResult:
         if isinstance(args, BashToolArgs):
-            subprocess.run(["bash", "-c", args.command])
-            return ToolResult(success=True)
+            result = subprocess.run(
+                ["bash", "-c", args.command], capture_output=True, text=True
+            )
+            return ToolResult(success=True, data={"output": result.stdout})
         return ToolResult(success=False, message="Invalid arguments")

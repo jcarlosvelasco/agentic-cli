@@ -9,7 +9,7 @@ ArgsT = TypeVar("ArgsT", bound=BaseModel)
 class ToolResult(BaseModel):
     success: bool
     message: str | None = None
-    data: dict[str, Any] | None = None
+    data: Any | None = None
 
 
 class Tool(ABC, Generic[ArgsT]):

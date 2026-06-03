@@ -26,13 +26,26 @@ class OllamaProvider(BaseLLMProvider):
         self,
         messages: List[Message],
     ) -> List[OllamaMessage]:
-        return [
-            {
+        result = []
+        for message in messages:
+            msg: dict = {
                 "role": message.role.value,
                 "content": message.content,
             }
-            for message in messages
-        ]
+            if message.tool_calls:
+                msg["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "function": {"name": tc.name, "arguments": tc.args},
+                    }
+                    for tc in message.tool_calls
+                ]
+            if message.tool_call_id:
+                msg["tool_call_id"] = message.tool_call_id
+
+            result.append(msg)
+
+        return result
 
     def get_ollama_schema(self, tool: Tool) -> dict[str, Any]:
         schema = {
@@ -61,7 +74,6 @@ class OllamaProvider(BaseLLMProvider):
             },
             "tools": [self.get_ollama_schema(tool) for tool in tools],
         }
-
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(

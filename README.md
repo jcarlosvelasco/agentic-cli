@@ -1,6 +1,6 @@
 # coding-agent
 
-**coding-agent** is a minimal, modular conversational agent framework that connects a local LLM (Ollama) with user-defined tools. The agent receives instructions, decides whether to call a tool, and displays the response to the user. It features a terminal UI built with [Rich](https://github.com/Textualize/rich).
+**coding-agent** is a framework agnostic, modular conversational agent framework that connects a LLM with user-defined tools. The agent receives instructions, decides whether to call a tool, and displays the response to the user. It features a terminal UI built with [Rich](https://github.com/Textualize/rich).
 
 ## Requirements
 
@@ -83,6 +83,10 @@ Compaction controls how the conversation history is reduced before each LLM call
 | `SUMMARIZATION` | Once the conversation exceeds 20 messages, summarizes older messages via the LLM and keeps the last 6 messages verbatim. |
 
 The active strategy is configured in `src/shared/main.py:33` by changing the `CompactionStrategy` enum value. Parameters (window size, threshold, keep count) are set in `src/compaction/CompactionRunner.py`.
+
+## Adding a LLM provider
+
+To add a new provider, you need to implement the `LLMProvider` interface in `src/llm/providers/`. This means implementing how to send a request to the LLM and how the provider formats the messages.
 
 ## Adding a tool
 

@@ -23,7 +23,9 @@ async def main():
 
 
 async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunner):
-    await run_compaction(strategy=CompactionStrategy.SUMMARIZATION, messages=messages)
+    messages = await run_compaction(
+        strategy=CompactionStrategy.SUMMARIZATION, messages=messages
+    )
 
     provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
 

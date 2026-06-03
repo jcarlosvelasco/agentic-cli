@@ -103,6 +103,14 @@ uv run ty check
 uv run ruff check
 ```
 
+## Future work
+
+- More tools: write files
+- Subagents
+- Streaming support
+- MCP support
+- Memory
+
 ## License
 
 Check [LICENSE.md](LICENSE.md)

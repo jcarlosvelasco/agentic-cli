@@ -1,12 +1,10 @@
 from typing import List
 
-from pydantic.main import BaseModel
-
 from src.compaction.Compaction import Compaction
-from src.llm.schema.Message import Message
+from src.llm.schema.Message import Message, MessageRole
 
 
-class SlidingWindow(Compaction, BaseModel):
+class SlidingWindow(Compaction):
     window_size: int
 
     async def compact(self, messages: List[Message]) -> List[Message]:
@@ -14,5 +12,9 @@ class SlidingWindow(Compaction, BaseModel):
             return messages
 
         print(f"Compacting {len(messages)} messages...")
-        messages = messages[-self.window_size :]
-        return messages
+
+        system_messages = [m for m in messages if m.role == MessageRole.SYSTEM]
+        non_system = [m for m in messages if m.role != MessageRole.SYSTEM]
+
+        messages = non_system[-self.window_size :]
+        return system_messages + messages

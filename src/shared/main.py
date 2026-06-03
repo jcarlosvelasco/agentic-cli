@@ -15,19 +15,23 @@ async def main():
     messages: List[Message] = []
     tools = get_tools()
     runner = ToolRunner()
+    provider = OllamaProvider(model="gemma4:e2b-mlx")
 
     while True:
         user_input = input("You: ")
         messages.append(Message(role=MessageRole.USER, content=user_input))
-        await agentLoop(messages, tools, runner)
+        messages = await agentLoop(messages, tools, runner, provider)
 
 
-async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunner):
+async def agentLoop(
+    messages: List[Message],
+    tools: List[Tool],
+    runner: ToolRunner,
+    provider: BaseLLMProvider,
+) -> List[Message]:
     messages = await run_compaction(
-        strategy=CompactionStrategy.SUMMARIZATION, messages=messages
+        strategy=CompactionStrategy.SUMMARIZATION, messages=messages, provider=provider
     )
-
-    provider: BaseLLMProvider = OllamaProvider(model="gemma4:e2b-mlx")
 
     while True:
         response = await provider.chat(messages, tools=tools)
@@ -62,6 +66,8 @@ async def agentLoop(messages: List[Message], tools: List[Tool], runner: ToolRunn
             )
             print("Agent:", response.content)
             break
+
+    return messages
 
 
 if __name__ == "__main__":

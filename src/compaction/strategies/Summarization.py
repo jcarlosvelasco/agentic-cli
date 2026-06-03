@@ -1,7 +1,5 @@
 from typing import List
 
-from pydantic.main import BaseModel
-
 from src.compaction.Compaction import Compaction
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
@@ -12,7 +10,7 @@ Preserve: key decisions, important facts, user intent, and any unresolved questi
 Respond ONLY with the summary text, no preamble."""
 
 
-class Summarization(Compaction, BaseModel):
+class Summarization(Compaction):
     threshold: int
     keep_last_n: int
     provider: BaseLLMProvider
@@ -22,8 +20,12 @@ class Summarization(Compaction, BaseModel):
             return messages
 
         print(f"Compacting {len(messages)} messages...")
-        messages_to_summarize = messages[: -self.keep_last_n]
+
+        messages_to_summarize = [
+            m for m in messages[: -self.keep_last_n] if m.role != MessageRole.SYSTEM
+        ]
         recent_messages = messages[-self.keep_last_n :]
+        system_messages = [m for m in messages if m.role == MessageRole.SYSTEM]
 
         summarization_request = [
             Message(role=MessageRole.SYSTEM, content=SUMMARIZATION_PROMPT),
@@ -45,4 +47,4 @@ class Summarization(Compaction, BaseModel):
             content=f"[Conversation summary]: {response.content}",
         )
 
-        return [summary_message, *recent_messages]
+        return [*system_messages, summary_message, *recent_messages]

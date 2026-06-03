@@ -105,4 +105,4 @@ uv run ruff check
 
 ## License
 
-MIT
+Check [LICENSE.md](LICENSE.md)

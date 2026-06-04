@@ -3,10 +3,8 @@ from typing import List, Optional
 from pydantic import Field
 from pydantic.main import BaseModel
 
-from src.agent.schema.Agent import Agent
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool, ToolResult
-from src.tools.registry import ToolRegistry
 
 DEFAULT_SYSTEM_PROMPT = """You are a specialized subagent. Complete the given task
 using only the tools available to you. Be concise — return only the result,
@@ -44,6 +42,9 @@ class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
         self._provider = provider
 
     async def execute(self, args: LaunchSubagentArgs | None) -> ToolResult:
+        from src.agent.schema.Agent import Agent
+        from src.tools.registry import ToolRegistry
+
         if not args:
             return ToolResult(success=False, message="Invalid arguments")
 

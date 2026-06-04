@@ -1,17 +1,19 @@
-from typing import List
+import asyncio
+from typing import List, Tuple
 
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
+from src.llm.schema.ToolCall import ToolCall
 from src.shared.console import (
     display_assistant_message,
     display_tool_call,
     display_tool_result,
     thinking_spinner,
 )
-from src.tools.interfaces.Tool import Tool
+from src.tools.interfaces.Tool import Tool, ToolResult
 from src.tools.ToolRunner import ToolRunner
 
 
@@ -57,25 +59,33 @@ class Agent(BaseModel):
                     )
                 )
 
-                for call in response.tool_calls:
-                    display_tool_call(call.name, call.args)
+                async def execute_tool_call(
+                    call: ToolCall,
+                ) -> Tuple[str, ToolResult] | None:
+                    display_tool_call(self.name, call.name, call.args)
                     tool = tools_by_name.get(call.name)
 
                     # if tool and confirm_execution(call.name, call.args):
                     if tool:
                         result = await runner.run(tool, call.args)
-                        if result is not None:
-                            display_tool_result(result.data)
+                        display_tool_result(self.name, result.data)
+                        return call.id, result
 
-                            self.messages.append(
-                                Message(
-                                    role=MessageRole.TOOL,
-                                    content=str(result.data),
-                                    tool_call_id=call.id,
-                                )
+                results = await asyncio.gather(
+                    *[execute_tool_call(call) for call in response.tool_calls]
+                )
+
+                for result in results:
+                    if result is not None:
+                        self.messages.append(
+                            Message(
+                                role=MessageRole.TOOL,
+                                content=str(result[1].data),
+                                tool_call_id=result[0],
                             )
+                        )
+
             else:
-                display_assistant_message(self.name, response.content)
                 self.messages.append(
                     Message(
                         role=MessageRole.ASSISTANT,

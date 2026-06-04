@@ -37,13 +37,13 @@ def display_assistant_message(agent_name: str, content: str) -> None:
     console.print(panel)
 
 
-def display_tool_call(name: str, args: object) -> None:
-    console.print(f"[yellow]🔧 {name}[/] [dim]({args})[/dim]")
+def display_tool_call(agent_name: str, name: str, args: object) -> None:
+    console.print(f"[green]{agent_name}[/] [yellow]🔧 {name}[/] [dim]({args})[/dim]")
 
 
-def display_tool_result(data: dict | str | None) -> None:
+def display_tool_result(agent_name: str, data: dict | str | None) -> None:
     if data:
-        console.print(f"[dim]{data}[/dim]")
+        console.print(f"[green]{agent_name}[/] [dim]{data}[/dim]")
 
 
 def display_compacting(count: int) -> None:

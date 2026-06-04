@@ -26,10 +26,10 @@ def display_user_message(content: str) -> None:
     console.print(panel)
 
 
-def display_assistant_message(content: str) -> None:
+def display_assistant_message(agent_name: str, content: str) -> None:
     panel = Panel(
         Markdown(content),
-        title="[green]Agent[/]",
+        title=f"[green]{agent_name}[/]",
         title_align="left",
         border_style="green",
         padding=(0, 1),

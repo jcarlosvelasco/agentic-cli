@@ -18,7 +18,7 @@ class WeatherTool(Tool[WeatherToolArgs]):
             args_schema=WeatherToolArgs,
         )
 
-    def execute(self, args: WeatherToolArgs | None) -> ToolResult:
+    async def execute(self, args: WeatherToolArgs | None) -> ToolResult:
         if not isinstance(args, WeatherToolArgs):
             return ToolResult(success=False, message="Invalid arguments")
         city = args.city

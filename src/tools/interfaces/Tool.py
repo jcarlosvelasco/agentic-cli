@@ -28,5 +28,5 @@ class Tool(ABC, Generic[ArgsT]):
         self.args_schema = args_schema
 
     @abstractmethod
-    def execute(self, args: ArgsT | None) -> ToolResult:
+    async def execute(self, args: ArgsT | None) -> ToolResult:
         pass

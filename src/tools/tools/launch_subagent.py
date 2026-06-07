@@ -12,7 +12,9 @@ no explanations unless asked."""
 
 
 class LaunchSubagentArgs(BaseModel):
-    task: str = Field(description="The task for the subagent to complete")
+    task: str = Field(
+        description="The task for the subagent to complete. Use this tool if there is complex task that requires multiple steps or tools."
+    )
     tools: List[str] = Field(
         description="List of tool names the subagent can use",
         examples=[["read_file", "search_in_files"]],
@@ -24,6 +26,9 @@ class LaunchSubagentArgs(BaseModel):
     max_iterations: int = Field(
         default=10,
         description="Max iterations before stopping",
+    )
+    agent_depth: int = Field(
+        description="Current depth of the agent hierarchy",
     )
 
 

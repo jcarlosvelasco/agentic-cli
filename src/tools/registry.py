@@ -4,8 +4,10 @@ from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool
 from src.tools.tools.bash import BashTool
 from src.tools.tools.launch_subagent import LaunchSubagentTool
+from src.tools.tools.read_file import ReadFileTool
 from src.tools.tools.weather import WeatherTool
 from src.tools.tools.web_search import WebSearchTool
+from src.tools.tools.write_file import WriteFileTool
 
 
 class ToolRegistry:
@@ -15,6 +17,8 @@ class ToolRegistry:
             WeatherTool(),
             LaunchSubagentTool(provider=provider),
             WebSearchTool(),
+            ReadFileTool(),
+            WriteFileTool(),
         ]
         self._by_name = {tool.name: tool for tool in self._tools}
 

@@ -46,7 +46,6 @@ class Agent(BaseModel):
         for _ in range(self.max_iterations):
             async with thinking_spinner():
                 response = await self.provider.chat(self.messages, tools=self.tools)
-                print(response)
 
             if response.has_tool_calls:
                 if response.content:

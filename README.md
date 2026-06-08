@@ -7,11 +7,26 @@
 - Python >= 3.12
 - [uv](https://docs.astral.sh/uv/)
 - [Ollama](https://ollama.com/) running locally with the desired model (e.g. `gemma4:e2b-mlx`)
+- A [Tavily](https://tavily.com/) API key (free tier available) — used by the web search tool
 
 ## Installation
 
 ```bash
 uv sync --dev
+```
+
+## Configuration
+
+Copy the environment file and add your Tavily API key:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and set your key:
+
+```env
+TAVILY_API_KEY=tvly-your-key-here
 ```
 
 ## Usage
@@ -59,8 +74,7 @@ src/
 │   ├── registry.py                      # Central tool registry
 │   ├── ToolRunner.py                    # Interactive executor with confirmation
 │   └── tools/
-│       ├── bash.py                      # Execute bash commands
-│       └── weather.py                   # Check weather via wttr.in
+│ 
 └── shared/main.py                       # Entry point (agent loop)
 ```
 
@@ -109,8 +123,6 @@ uv run ruff check
 
 ## Future work
 
-- More tools: write files
-- Subagents
 - Streaming support
 - MCP support
 - Memory

@@ -28,7 +28,8 @@ class BaseLLMProvider(ABC, Generic[MessageT]):
     async def stream_chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
     ) -> AsyncIterator[StreamLLMChatResponse]:
-        pass
+        if False:
+            yield
 
     @abstractmethod
     def format_messages(self, messages: List[Message]) -> List[MessageT]:

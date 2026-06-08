@@ -3,9 +3,9 @@ import asyncio
 from src.agent.schema.Agent import Agent
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.shared.console import (
-    display_assistant_message,
     display_welcome,
     get_user_input,
+    streaming_panel,
 )
 from src.tools.registry import ToolRegistry
 
@@ -25,8 +25,9 @@ async def main():
 
     while True:
         user_input = get_user_input()
-        response = await agent._stream_chat(user_input)
-        display_assistant_message(agent.name, response)
+
+        async with streaming_panel(agent.name) as update:
+            await agent._stream_chat(user_input, on_content=update)
 
 
 if __name__ == "__main__":

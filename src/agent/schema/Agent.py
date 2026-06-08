@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 from typing import List, Tuple
 
 from pydantic import BaseModel
@@ -11,6 +12,7 @@ from src.shared.console import (
     display_assistant_message,
     display_tool_call,
     display_tool_result,
+    streaming_panel,
     thinking_spinner,
 )
 from src.tools.interfaces.Tool import Tool, ToolResult
@@ -35,12 +37,12 @@ class Agent(BaseModel):
         self.messages.append(Message(role=MessageRole.USER, content=task))
         return await self._stream_loop()
 
-    async def _stream_loop(self) -> str:
+    async def _stream_loop(self, on_content: Callable[[str], None] | None = None) -> str:
         runner = ToolRunner()
         tools_by_name = {tool.name: tool for tool in self.tools}
 
         for _ in range(self.max_iterations):
-            stream = await self.provider.stream_chat(
+            stream = self.provider.stream_chat(
                 self.messages,
                 tools=self.tools,
             )
@@ -48,17 +50,29 @@ class Agent(BaseModel):
             full_content = ""
             last_tool_calls: List[ToolCall] = []
 
-            async with thinking_spinner():
+            if on_content:
                 async for chunk in stream:
                     if chunk.content:
                         full_content += chunk.content
-                        print(chunk.content, end="", flush=True)
+                        on_content(full_content)
 
                     if chunk.tool_calls:
                         last_tool_calls = chunk.tool_calls
 
                     if chunk.done:
                         break
+            else:
+                async with streaming_panel(self.name) as update:
+                    async for chunk in stream:
+                        if chunk.content:
+                            full_content += chunk.content
+                            update(full_content)
+
+                        if chunk.tool_calls:
+                            last_tool_calls = chunk.tool_calls
+
+                        if chunk.done:
+                            break
 
             if last_tool_calls:
                 self.messages.append(
@@ -107,9 +121,9 @@ class Agent(BaseModel):
 
         return "Max iterations reached"
 
-    async def _stream_chat(self, user_input: str) -> str:
+    async def _stream_chat(self, user_input: str, on_content: Callable[[str], None] | None = None) -> str:
         self.messages.append(Message(role=MessageRole.USER, content=user_input))
-        return await self._stream_loop()
+        return await self._stream_loop(on_content=on_content)
 
     async def run(self, task: str) -> str:
         if self.system_prompt:

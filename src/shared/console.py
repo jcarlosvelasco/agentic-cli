@@ -1,10 +1,12 @@
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
+from rich.spinner import Spinner
 
 console = Console()
 
@@ -59,6 +61,22 @@ def confirm_execution(tool_name: str, tool_input: object) -> bool:
         f"[yellow]Execute {tool_name}[/] with [dim]{tool_input}[/dim]?",
         default=False,
     )
+
+
+@asynccontextmanager
+async def streaming_panel(agent_name: str, initial: str = "") -> AsyncGenerator[Callable[[str], None], None]:
+    spinner = Spinner("dots", text="[yellow]Thinking...[/]")
+    with Live(spinner, refresh_per_second=10, vertical_overflow="visible") as live:
+        def update(content: str) -> None:
+            panel = Panel(
+                Markdown(content),
+                title=f"[green]{agent_name}[/]",
+                title_align="left",
+                border_style="green",
+                padding=(0, 1),
+            )
+            live.update(panel)
+        yield update
 
 
 @asynccontextmanager

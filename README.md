@@ -122,8 +122,6 @@ uv run ruff check
 ```
 
 ## Future work
-
-- Streaming support
 - MCP support
 - Memory
 

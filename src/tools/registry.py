@@ -5,6 +5,7 @@ from src.tools.interfaces.Tool import Tool
 from src.tools.tools.bash import BashTool
 from src.tools.tools.launch_subagent import LaunchSubagentTool
 from src.tools.tools.weather import WeatherTool
+from src.tools.tools.web_search import WebSearchTool
 
 
 class ToolRegistry:
@@ -13,6 +14,7 @@ class ToolRegistry:
             BashTool(),
             WeatherTool(),
             LaunchSubagentTool(provider=provider),
+            WebSearchTool(),
         ]
         self._by_name = {tool.name: tool for tool in self._tools}
 

@@ -25,7 +25,7 @@ async def main():
 
     while True:
         user_input = get_user_input()
-        response = await agent.chat(user_input)
+        response = await agent._stream_chat(user_input)
         display_assistant_message(agent.name, response)
 
 

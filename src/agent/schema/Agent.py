@@ -27,6 +27,90 @@ class Agent(BaseModel):
     max_iterations: int = 10
     system_prompt: str | None = None
 
+    async def stream_run(self, task) -> str:
+        if self.system_prompt:
+            self.messages.append(
+                Message(role=MessageRole.SYSTEM, content=self.system_prompt)
+            )
+        self.messages.append(Message(role=MessageRole.USER, content=task))
+        return await self._stream_loop()
+
+    async def _stream_loop(self) -> str:
+        runner = ToolRunner()
+        tools_by_name = {tool.name: tool for tool in self.tools}
+
+        for _ in range(self.max_iterations):
+            stream = await self.provider.stream_chat(
+                self.messages,
+                tools=self.tools,
+            )
+
+            full_content = ""
+            last_tool_calls: List[ToolCall] = []
+
+            async with thinking_spinner():
+                async for chunk in stream:
+                    if chunk.content:
+                        full_content += chunk.content
+                        print(chunk.content, end="", flush=True)
+
+                    if chunk.tool_calls:
+                        last_tool_calls = chunk.tool_calls
+
+                    if chunk.done:
+                        break
+
+            if last_tool_calls:
+                self.messages.append(
+                    Message(
+                        role=MessageRole.ASSISTANT,
+                        content=full_content,
+                        tool_calls=last_tool_calls,
+                    )
+                )
+
+                async def execute_tool_call(
+                    call: ToolCall,
+                ) -> Tuple[str, ToolResult] | None:
+                    display_tool_call(self.name, call.name, call.args)
+                    tool = tools_by_name.get(call.name)
+
+                    # if tool and confirm_execution(call.name, call.args):
+                    if tool:
+                        result = await runner.run(tool, call.args)
+                        display_tool_result(self.name, result.data)
+                        return call.id, result
+
+                results = await asyncio.gather(
+                    *[execute_tool_call(call) for call in last_tool_calls]
+                )
+
+                for result in results:
+                    if result is not None:
+                        self.messages.append(
+                            Message(
+                                role=MessageRole.TOOL,
+                                content=str(result[1].data),
+                                tool_call_id=result[0],
+                            )
+                        )
+
+            else:
+                self.messages.append(
+                    Message(
+                        role=MessageRole.ASSISTANT,
+                        content=full_content,
+                    )
+                )
+
+                return full_content
+
+        return "Max iterations reached"
+
+    async def _stream_chat(self, user_input: str) -> str:
+        self.messages.append(Message(role=MessageRole.USER, content=user_input))
+        return await self._stream_loop()
+
     async def run(self, task: str) -> str:
         if self.system_prompt:
             self.messages.append(

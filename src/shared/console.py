@@ -23,7 +23,7 @@ def display_welcome() -> None:
 
 
 def display_warning(message: str) -> None:
-    console.print(f"[yellow]{message}[/]")
+    console.print(f"\n[yellow]{message}[/]")
 
 
 def display_user_message(content: str) -> None:
@@ -49,16 +49,16 @@ def display_assistant_message(agent_name: str, content: str) -> None:
 
 
 def display_tool_call(agent_name: str, name: str, args: object) -> None:
-    console.print(f"[green]{agent_name}[/] [yellow]🔧 {name}[/] [dim]({args})[/dim]")
+    console.print(f"\n[green]{agent_name}[/] [yellow]🔧 {name}[/] [dim]({args})[/dim]")
 
 
 def display_tool_result(agent_name: str, data: dict | str | None) -> None:
     if data:
-        console.print(f"[green]{agent_name}[/] [dim]{data}[/dim]")
+        console.print(f"\n[green]{agent_name}[/] [dim]{data}[/dim]")
 
 
 def display_compacting(count: int) -> None:
-    console.print(f"[dim]Compacting {count} messages...[/dim]")
+    console.print(f"\n[dim]Compacting {count} messages...[/dim]")
 
 
 async def get_user_input() -> str:
@@ -67,7 +67,7 @@ async def get_user_input() -> str:
 
 def confirm_execution(tool_name: str, tool_input: object) -> bool:
     return Confirm.ask(
-        f"[yellow]Execute {tool_name}[/] with [dim]{tool_input}[/dim]?",
+        f"\n[yellow]Execute {tool_name}[/] with [dim]{tool_input}[/dim]?",
         default=False,
     )
 

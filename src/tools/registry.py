@@ -22,6 +22,10 @@ class ToolRegistry:
         ]
         self._by_name = {tool.name: tool for tool in self._tools}
 
+    def register(self, tool: Tool) -> None:
+        self._tools.append(tool)
+        self._by_name[tool.name] = tool
+
     def get_tools(self) -> List[Tool]:
         return self._tools
 

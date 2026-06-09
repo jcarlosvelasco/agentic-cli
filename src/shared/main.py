@@ -24,7 +24,7 @@ async def main():
     )
 
     while True:
-        user_input = get_user_input()
+        user_input = await get_user_input()
 
         async with streaming_panel(agent.name) as update:
             await agent._stream_chat(user_input, on_content=update)

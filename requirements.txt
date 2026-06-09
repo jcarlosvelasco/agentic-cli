@@ -1,4 +1,5 @@
 httpx
+prompt_toolkit
 pydantic
 rich
 tavily

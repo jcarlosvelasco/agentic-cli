@@ -1,14 +1,19 @@
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Confirm
 from rich.spinner import Spinner
 
 console = Console()
+
+_session = PromptSession(history=FileHistory(str(Path.home() / ".opencode_history")))
 
 
 def display_welcome() -> None:
@@ -52,8 +57,8 @@ def display_compacting(count: int) -> None:
     console.print(f"[dim]Compacting {count} messages...[/dim]")
 
 
-def get_user_input() -> str:
-    return Prompt.ask("[bold blue]You[/]")
+async def get_user_input() -> str:
+    return await _session.prompt_async("You: ") or ""
 
 
 def confirm_execution(tool_name: str, tool_input: object) -> bool:
@@ -64,9 +69,12 @@ def confirm_execution(tool_name: str, tool_input: object) -> bool:
 
 
 @asynccontextmanager
-async def streaming_panel(agent_name: str, initial: str = "") -> AsyncGenerator[Callable[[str], None], None]:
+async def streaming_panel(
+    agent_name: str, initial: str = ""
+) -> AsyncGenerator[Callable[[str], None], None]:
     spinner = Spinner("dots", text="[yellow]Thinking...[/]")
     with Live(spinner, refresh_per_second=10, vertical_overflow="visible") as live:
+
         def update(content: str) -> None:
             panel = Panel(
                 Markdown(content),
@@ -76,6 +84,7 @@ async def streaming_panel(agent_name: str, initial: str = "") -> AsyncGenerator[
                 padding=(0, 1),
             )
             live.update(panel)
+
         yield update
 
 

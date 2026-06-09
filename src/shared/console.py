@@ -22,6 +22,10 @@ def display_welcome() -> None:
     console.print()
 
 
+def display_warning(message: str) -> None:
+    console.print(f"[yellow]{message}[/]")
+
+
 def display_user_message(content: str) -> None:
     panel = Panel(
         content,

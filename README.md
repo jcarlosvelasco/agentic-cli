@@ -122,7 +122,6 @@ uv run ruff check
 ```
 
 ## Future work
-- MCP support
 - Memory
 
 ## License

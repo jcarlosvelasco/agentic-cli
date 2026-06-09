@@ -15,7 +15,7 @@ async def main():
     provider = OllamaProvider(model="gemma4:e2b-mlx")
     registry = ToolRegistry(provider=provider)
 
-    mcp_registry = MCPRegistry.from_file("mcp.json")
+    mcp_registry = MCPRegistry.from_file("src/mcp/mcp.json")
     mcp_tools = await mcp_registry.load_all()
     for tool in mcp_tools:
         registry.register(tool)

@@ -22,7 +22,7 @@ async def main():
     if not path.exists(mcp_path):
         display_warning("No MCP config found, skipping MCP setup.")
     else:
-        mcp_registry = MCPRegistry.from_file("src/mcp/mcp.json")
+        mcp_registry = MCPRegistry.from_file(mcp_path)
         mcp_tools = await mcp_registry.load_all()
         for tool in mcp_tools:
             registry.register(tool)

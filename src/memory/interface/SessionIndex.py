@@ -21,17 +21,26 @@ class SessionIndex(BaseModel):
         return self.created_at.strftime("%Y%m%d%H%M%S")
 
     @classmethod
+    def create(cls) -> None:
+        index_path = get_session_index_file_path()
+        formatted_index_file_path = Path(index_path)
+
+        if not formatted_index_file_path.exists():
+            formatted_index_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(index_path, "w") as f:
+                json.dump([], f)
+
+    @classmethod
     def update(cls, session_id: str, summary: str, tags: list[str]) -> None:
         index_path = get_session_index_file_path()
-        formatted_index_path = Path(index_path)
+        formatted_index_file_path = Path(index_path)
 
-        if not formatted_index_path.exists():
-            formatted_index_path.parent.mkdir(parents=True, exist_ok=True)
+        if not formatted_index_file_path.exists():
+            cls.create()
 
         entries: list[dict] = []
-        if formatted_index_path.stat().st_size > 0:
-            with open(index_path) as f:
-                entries = json.load(f)
+        with open(index_path) as f:
+            entries = json.load(f)
 
         existing = [
             e for e in entries if e.get("session_path", "").endswith(session_id)

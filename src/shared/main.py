@@ -5,6 +5,7 @@ from src.agent.schema.Agent import Agent
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.mcp.mpc_registry import MCPRegistry
 from src.memory.interface.Session import Session
+from src.memory.summarize import summarize
 from src.shared.console import (
     display_warning,
     display_welcome,
@@ -16,9 +17,9 @@ from src.tools.registry import ToolRegistry
 
 async def main():
     provider = OllamaProvider(model="gemma4:e2b-mlx")
-    registry = ToolRegistry(provider=provider)
-    mcp_registry: MCPRegistry | None = None
     session = Session()
+    registry = ToolRegistry(provider=provider, session=session)
+    mcp_registry: MCPRegistry | None = None
 
     mcp_path = "src/mcp/mcp.json"
     if not path.exists(mcp_path):
@@ -45,7 +46,10 @@ async def main():
             async with streaming_panel(agent.name) as update:
                 await agent._stream_chat(user_input, on_content=update)
     except KeyboardInterrupt:
-        print("\nSaliendo...")
+        display_warning("Interrupted by user. Summarizing session...")
+        session.save()
+        await summarize(session.id, provider)
+        display_warning("Session summarized. Exiting...")
     finally:
         if mcp_registry is not None:
             await mcp_registry.cleanup()

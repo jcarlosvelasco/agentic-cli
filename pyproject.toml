@@ -19,3 +19,6 @@ dev = [
     "ruff>=0.15.15",
     "ty>=0.0.42",
 ]
+
+[tool.uv]
+package = true

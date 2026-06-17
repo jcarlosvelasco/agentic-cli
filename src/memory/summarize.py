@@ -11,10 +11,8 @@ async def summarize(session_id: str, provider: BaseLLMProvider) -> None:
     min_messages = 2
 
     save_path = get_session_folder_path()
-    session_path = Path(save_path) / session_id
 
-    if not session_path.exists():
-        session_path.mkdir(parents=True, exist_ok=True)
+    session_path = Path(save_path) / f"session_{session_id}.json"
 
     session = Session.model_validate_json(session_path.read_text())
     if len(session.messages) < min_messages:

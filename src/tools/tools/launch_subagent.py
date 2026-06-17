@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import Field
 from pydantic.main import BaseModel
 
+from memory.interface.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool, ToolResult
 
@@ -33,7 +34,7 @@ class LaunchSubagentArgs(BaseModel):
 
 
 class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
-    def __init__(self, provider: BaseLLMProvider):
+    def __init__(self, provider: BaseLLMProvider, session: Session):
         super().__init__(
             name="launch_subagent",
             description=(
@@ -45,6 +46,7 @@ class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
         )
 
         self._provider = provider
+        self._session = session
 
     async def execute(self, args: LaunchSubagentArgs | None) -> ToolResult:
         from src.agent.schema.Agent import Agent
@@ -53,7 +55,7 @@ class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
         if not args:
             return ToolResult(success=False, message="Invalid arguments")
 
-        registry = ToolRegistry(provider=self._provider)
+        registry = ToolRegistry(provider=self._provider, session=self._session)
         all_tools_by_name = {tool.name: tool for tool in registry.get_tools()}
 
         subagent_tools = []
@@ -76,6 +78,7 @@ class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
             provider=self._provider,
             tools=subagent_tools,
             system_prompt=args.system_prompt,
+            session=self._session,
         )
         result = await subagent.run(args.task)
         return ToolResult(success=True, data=result)

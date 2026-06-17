@@ -1,5 +1,6 @@
 from typing import List
 
+from memory.interface.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool
 from src.tools.tools.bash import BashTool
@@ -11,11 +12,11 @@ from src.tools.tools.write_file import WriteFileTool
 
 
 class ToolRegistry:
-    def __init__(self, provider: BaseLLMProvider):
+    def __init__(self, provider: BaseLLMProvider, session: Session):
         self._tools: List[Tool] = [
             BashTool(),
             WeatherTool(),
-            LaunchSubagentTool(provider=provider),
+            LaunchSubagentTool(provider=provider, session=session),
             WebSearchTool(),
             ReadFileTool(),
             WriteFileTool(),

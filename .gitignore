@@ -10,3 +10,4 @@ wheels/
 .venv
 .env
 src/memory/data/sessions/
+src/memory/data/session_index.json

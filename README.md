@@ -65,7 +65,8 @@ src/
 │   ├── LLMConfig.py                     # LLM provider settings
 │   ├── MCPConfig.py                     # MCP server configuration
 │   ├── MemoryConfig.py                  # Memory settings
-│   └── ToolsConfig.py                   # Tool-specific configuration
+│   ├── ToolsConfig.py                   # Tool-specific configuration
+│   └── UIConfig.py                      # UI settings (streaming, etc.)
 ├── llm/
 │   ├── interfaces/BaseLLMProvider.py    # Abstract base class for LLM providers
 │   ├── providers/ollama/                # Ollama implementation

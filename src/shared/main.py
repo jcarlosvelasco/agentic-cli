@@ -13,6 +13,7 @@ from src.mcp.mpc_registry import MCPRegistry
 from src.memory.interface.Session import Session
 from src.memory.summarize import summarize
 from src.shared.console import (
+    display_assistant_message,
     display_compacting,
     display_warning,
     display_welcome,
@@ -59,7 +60,11 @@ async def main():
 
             user_input = await get_user_input()
             async with streaming_panel(agent.name) as update:
-                await agent._stream_chat(user_input, on_content=update)
+                if config.ui.streaming:
+                    await agent._stream_chat(user_input, on_content=update)
+                else:
+                    result = await agent.chat(user_input)
+                    display_assistant_message(agent.name, result)
     except KeyboardInterrupt:
         if config.memory.enabled:
             display_warning("Interrupted by user. Summarizing session...")

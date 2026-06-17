@@ -6,6 +6,7 @@ from config.LLMConfig import LLMConfig
 from config.MCPConfig import MCPConfig
 from config.MemoryConfig import MemoryConfig
 from config.ToolsConfig import ToolsConfig
+from config.UIConfig import UIConfig
 
 
 class AppConfig(BaseModel):
@@ -14,3 +15,4 @@ class AppConfig(BaseModel):
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     compaction: CompactionConfig = Field(default_factory=CompactionConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    ui: UIConfig = Field(default_factory=UIConfig)

@@ -1,6 +1,7 @@
 import asyncio
 from os import path
 
+from memory.preamble import preamble
 from src.agent.schema.Agent import Agent
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.mcp.mpc_registry import MCPRegistry
@@ -20,6 +21,9 @@ async def main():
     session = Session()
     registry = ToolRegistry(provider=provider, session=session)
     mcp_registry: MCPRegistry | None = None
+    memory = await preamble()
+
+    print(f"Preparing agent with memory: {memory}")
 
     mcp_path = "src/mcp/mcp.json"
     if not path.exists(mcp_path):
@@ -37,12 +41,7 @@ async def main():
         provider=provider,
         tools=registry.get_tools(),
         system_prompt=(
-            "You are a helpful coding assistant with memory. "
-            "You have access to a 'recall' tool that searches past conversations. "
-            "When the user asks anything that could be answered by previous sessions "
-            "(e.g., their name, preferences, past decisions, what you worked on before, "
-            "or any fact that might have been established earlier), ALWAYS call the recall tool "
-            "FIRST before answering. Be proactive about using it."
+            f"You are a helpful coding assistant. Here is some memory from your recent sessions: {memory}"
         ),
         session=session,
     )

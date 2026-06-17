@@ -4,6 +4,7 @@ from os import path
 from src.agent.schema.Agent import Agent
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.mcp.mpc_registry import MCPRegistry
+from src.memory.interface.Session import Session
 from src.shared.console import (
     display_warning,
     display_welcome,
@@ -17,6 +18,7 @@ async def main():
     provider = OllamaProvider(model="gemma4:e2b-mlx")
     registry = ToolRegistry(provider=provider)
     mcp_registry: MCPRegistry | None = None
+    session = Session()
 
     mcp_path = "src/mcp/mcp.json"
     if not path.exists(mcp_path):
@@ -34,6 +36,7 @@ async def main():
         provider=provider,
         tools=registry.get_tools(),
         system_prompt="You are a coding assistant...",
+        session=session,
     )
 
     try:
@@ -41,6 +44,8 @@ async def main():
             user_input = await get_user_input()
             async with streaming_panel(agent.name) as update:
                 await agent._stream_chat(user_input, on_content=update)
+    except KeyboardInterrupt:
+        print("\nSaliendo...")
     finally:
         if mcp_registry is not None:
             await mcp_registry.cleanup()

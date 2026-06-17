@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import AsyncExitStack
 from typing import Any, Dict, List, Optional, Type, cast
@@ -93,4 +94,9 @@ class MCPClient:
         return tool_list
 
     async def cleanup(self) -> None:
-        await self.exit_stack.aclose()
+        try:
+            await self.exit_stack.aclose()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            print(f"[MCP] Cleanup warning: {e}")

@@ -8,6 +8,7 @@ from pydantic.config import ConfigDict
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
+from src.memory.interface.Session import Session
 from src.shared.console import (
     display_assistant_message,
     display_tool_call,
@@ -28,16 +29,17 @@ class Agent(BaseModel):
     messages: List[Message] = []
     max_iterations: int = 10
     system_prompt: str | None = None
+    session: Session
 
     async def stream_run(self, task) -> str:
         if self.system_prompt:
-            self.messages.append(
-                Message(role=MessageRole.SYSTEM, content=self.system_prompt)
-            )
-        self.messages.append(Message(role=MessageRole.USER, content=task))
+            self.append(Message(role=MessageRole.SYSTEM, content=self.system_prompt))
+        self.append(Message(role=MessageRole.USER, content=task))
         return await self._stream_loop()
 
-    async def _stream_loop(self, on_content: Callable[[str], None] | None = None) -> str:
+    async def _stream_loop(
+        self, on_content: Callable[[str], None] | None = None
+    ) -> str:
         runner = ToolRunner()
         tools_by_name = {tool.name: tool for tool in self.tools}
 
@@ -75,7 +77,7 @@ class Agent(BaseModel):
                             break
 
             if last_tool_calls:
-                self.messages.append(
+                self.append(
                     Message(
                         role=MessageRole.ASSISTANT,
                         content=full_content,
@@ -101,7 +103,7 @@ class Agent(BaseModel):
 
                 for result in results:
                     if result is not None:
-                        self.messages.append(
+                        self.append(
                             Message(
                                 role=MessageRole.TOOL,
                                 content=str(result[1].data),
@@ -110,7 +112,7 @@ class Agent(BaseModel):
                         )
 
             else:
-                self.messages.append(
+                self.append(
                     Message(
                         role=MessageRole.ASSISTANT,
                         content=full_content,
@@ -121,20 +123,23 @@ class Agent(BaseModel):
 
         return "Max iterations reached"
 
-    async def _stream_chat(self, user_input: str, on_content: Callable[[str], None] | None = None) -> str:
-        self.messages.append(Message(role=MessageRole.USER, content=user_input))
+    async def _stream_chat(
+        self, user_input: str, on_content: Callable[[str], None] | None = None
+    ) -> str:
+        self.append(Message(role=MessageRole.USER, content=user_input))
+
         return await self._stream_loop(on_content=on_content)
 
     async def run(self, task: str) -> str:
         if self.system_prompt:
-            self.messages.append(
-                Message(role=MessageRole.SYSTEM, content=self.system_prompt)
-            )
-        self.messages.append(Message(role=MessageRole.USER, content=task))
+            self.append(Message(role=MessageRole.SYSTEM, content=self.system_prompt))
+
+        self.append(Message(role=MessageRole.USER, content=task))
+
         return await self._loop()
 
     async def chat(self, user_input: str) -> str:
-        self.messages.append(Message(role=MessageRole.USER, content=user_input))
+        self.append(Message(role=MessageRole.USER, content=user_input))
         return await self._loop()
 
     async def _loop(self) -> str:
@@ -149,7 +154,7 @@ class Agent(BaseModel):
                 if response.content:
                     display_assistant_message(self.name, response.content)
 
-                self.messages.append(
+                self.append(
                     Message(
                         role=MessageRole.ASSISTANT,
                         content=response.content,
@@ -175,7 +180,7 @@ class Agent(BaseModel):
 
                 for result in results:
                     if result is not None:
-                        self.messages.append(
+                        self.append(
                             Message(
                                 role=MessageRole.TOOL,
                                 content=str(result[1].data),
@@ -184,7 +189,7 @@ class Agent(BaseModel):
                         )
 
             else:
-                self.messages.append(
+                self.append(
                     Message(
                         role=MessageRole.ASSISTANT,
                         content=response.content,
@@ -193,3 +198,7 @@ class Agent(BaseModel):
                 return response.content
 
         return "Max iterations reached"
+
+    def append(self, msg: Message) -> None:
+        self.messages.append(msg)
+        self.session.append(msg)

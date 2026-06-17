@@ -36,7 +36,14 @@ async def main():
         name="main",
         provider=provider,
         tools=registry.get_tools(),
-        system_prompt="You are a coding assistant...",
+        system_prompt=(
+            "You are a helpful coding assistant with memory. "
+            "You have access to a 'recall' tool that searches past conversations. "
+            "When the user asks anything that could be answered by previous sessions "
+            "(e.g., their name, preferences, past decisions, what you worked on before, "
+            "or any fact that might have been established earlier), ALWAYS call the recall tool "
+            "FIRST before answering. Be proactive about using it."
+        ),
         session=session,
     )
 

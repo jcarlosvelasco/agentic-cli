@@ -18,7 +18,10 @@ class RecallTool(Tool[RecallToolArgs]):
         super().__init__(
             name="recall",
             description=(
-                "Searches past session summaries and explicit memories. Use this when you need context from previous conversations - decisions, facts, preferences, or past work on a topic."
+                "Searches past session summaries and explicit memories."
+                "When the user asks anything that could be answered by previous sessions "
+                "(e.g., their name, preferences, past decisions, what you worked on before, "
+                "or any fact that might have been established earlier)"
             ),
             args_schema=RecallToolArgs,
         )

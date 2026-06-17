@@ -59,6 +59,13 @@ src/
 │   └── strategies/
 │       ├── SlidingWindow.py             # Keeps the last N messages
 │       └── Summarization.py             # Summarizes older messages via the LLM
+├── config/
+│   ├── AppConfig.py                     # Global application configuration model
+│   ├── CompactionConfig.py              # Compaction-specific settings
+│   ├── LLMConfig.py                     # LLM provider settings
+│   ├── MCPConfig.py                     # MCP server configuration
+│   ├── MemoryConfig.py                  # Memory settings
+│   └── ToolsConfig.py                   # Tool-specific configuration
 ├── llm/
 │   ├── interfaces/BaseLLMProvider.py    # Abstract base class for LLM providers
 │   ├── providers/ollama/                # Ollama implementation
@@ -69,13 +76,24 @@ src/
 │       ├── ToolCall.py
 │       ├── LLMChatResponse.py
 │       └── Chat*Error.py
+├── memory/
+│   ├── interface/
+│   │   ├── Session.py                   # Session data model
+│   │   └── SessionIndex.py              # Session index manager
+│   ├── preamble.py                      # Session preamble generation
+│   ├── summarize.py                     # Session summarization logic
+│   ├── update_session.py                # Session update on new interactions
+│   └── utils.py                         # Memory utilities
 ├── tools/
 │   ├── interfaces/Tool.py               # Abstract Tool + ToolResult
 │   ├── registry.py                      # Central tool registry
 │   ├── ToolRunner.py                    # Interactive executor with confirmation
 │   └── tools/
 │ 
-└── shared/main.py                       # Entry point (agent loop)
+├── shared/
+│   ├── main.py                          # Entry point (agent loop)
+│   └── config.py                        # YAML/JSON config loader
+└── config.json                          # User-facing configuration file
 ```
 
 ### Flow

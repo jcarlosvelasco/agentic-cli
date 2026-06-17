@@ -41,7 +41,10 @@ async def main():
         provider=provider,
         tools=registry.get_tools(),
         system_prompt=(
-            f"You are a helpful coding assistant. Here is some memory from your recent sessions: {memory}"
+            f"You are a helpful coding assistant. Here is some memory from your recent sessions: {memory}\n\n"
+            "You also have a 'recall' tool that can search ALL past sessions in more detail. "
+            "When the user asks something not covered in the memory above, or asks for specifics "
+            "that might be in a past conversation, call recall first before answering."
         ),
         session=session,
     )

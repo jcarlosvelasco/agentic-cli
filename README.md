@@ -122,7 +122,8 @@ uv run ruff check
 ```
 
 ## Future work
-- Memory
+- Skills
+- Token count
 
 ## License
 

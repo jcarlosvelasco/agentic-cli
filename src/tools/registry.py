@@ -1,5 +1,6 @@
 from typing import List
 
+from config.AppConfig import AppConfig
 from memory.interface.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool
@@ -13,12 +14,13 @@ from src.tools.tools.write_file import WriteFileTool
 
 
 class ToolRegistry:
-    def __init__(self, provider: BaseLLMProvider, session: Session):
+    def __init__(self, provider: BaseLLMProvider, session: Session, config: AppConfig):
+        self._config = config
         self._tools: List[Tool] = [
             BashTool(),
             RecallTool(provider=provider),
             WeatherTool(),
-            LaunchSubagentTool(provider=provider, session=session),
+            LaunchSubagentTool(provider=provider, session=session, config=config),
             WebSearchTool(),
             ReadFileTool(),
             WriteFileTool(),
@@ -30,7 +32,10 @@ class ToolRegistry:
         self._by_name[tool.name] = tool
 
     def get_tools(self) -> List[Tool]:
-        return self._tools
+        if self._config.tools.enabled:
+            return self._tools
+
+        return []
 
     def get_tool_by_name(self, name: str) -> Tool | None:
         return self._by_name.get(name)

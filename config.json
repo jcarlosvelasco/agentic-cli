@@ -4,21 +4,22 @@
     "base_url": "http://localhost:11434/api",
     "timeout": 60
   },
-  "modules": {
-    "memory": {
-      "enabled": true,
-      "max_recent_sessions": 5
-    },
-    "mcp": {
-      "enabled": true,
-      "config_file": "src/mcp/mcp.json"
-    },
-    "compaction": {
-      "enabled": false,
-      "strategy": "sliding_window",
-      "sliding_window_size": 20,
-      "summarization_threshold": 20,
-      "summarization_keep": 6
-    }
+  "memory": {
+    "enabled": true,
+    "max_recent_sessions": 5
+  },
+  "mcp": {
+    "enabled": false,
+    "config_file": "src/mcp/mcp.json"
+  },
+  "compaction": {
+    "enabled": false,
+    "strategy": "sliding_window",
+    "sliding_window_size": 20,
+    "summarization_threshold": 20,
+    "summarization_keep": 6
+  },
+  "tools": {
+    "enabled": true
   }
 }

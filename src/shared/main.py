@@ -1,7 +1,10 @@
 import asyncio
 from os import path
 
+from compaction.CompactionRunner import run_compaction
+from compaction.CompactionStrategy import CompactionStrategy
 from config.AppConfig import AppConfig
+from llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from memory.preamble import preamble
 from shared.config import load_config
 from src.agent.schema.Agent import Agent
@@ -10,6 +13,7 @@ from src.mcp.mpc_registry import MCPRegistry
 from src.memory.interface.Session import Session
 from src.memory.summarize import summarize
 from src.shared.console import (
+    display_compacting,
     display_warning,
     display_welcome,
     get_user_input,
@@ -23,7 +27,7 @@ async def main():
 
     provider = OllamaProvider(model=config.llm.model, base_url=config.llm.base_url)
     session = Session()
-    registry = ToolRegistry(provider=provider, session=session)
+    registry = ToolRegistry(provider=provider, session=session, config=config)
     mcp_registry: MCPRegistry | None = None
 
     if config.mcp.enabled:
@@ -50,6 +54,9 @@ async def main():
 
     try:
         while True:
+            if config.compaction.enabled:
+                await compact(agent, config.compaction.strategy, provider)
+
             user_input = await get_user_input()
             async with streaming_panel(agent.name) as update:
                 await agent._stream_chat(user_input, on_content=update)
@@ -77,6 +84,21 @@ async def build_system_prompt(config: AppConfig) -> str:
         "that might be in a past conversation, call recall first before answering."
 
     return system_prompt
+
+
+async def compact(
+    agent: Agent,
+    compaction_strategy: CompactionStrategy,
+    provider: BaseLLMProvider,
+):
+    compacted = await run_compaction(
+        strategy=compaction_strategy,
+        messages=agent.messages,
+        provider=provider,
+    )
+    if len(compacted) < len(agent.messages):
+        display_compacting(len(agent.messages) - len(compacted))
+        agent.messages = compacted
 
 
 if __name__ == "__main__":

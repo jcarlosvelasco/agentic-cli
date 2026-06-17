@@ -6,6 +6,7 @@ from src.tools.interfaces.Tool import Tool
 from src.tools.tools.bash import BashTool
 from src.tools.tools.launch_subagent import LaunchSubagentTool
 from src.tools.tools.read_file import ReadFileTool
+from src.tools.tools.recall import RecallTool
 from src.tools.tools.weather import WeatherTool
 from src.tools.tools.web_search import WebSearchTool
 from src.tools.tools.write_file import WriteFileTool
@@ -15,6 +16,7 @@ class ToolRegistry:
     def __init__(self, provider: BaseLLMProvider, session: Session):
         self._tools: List[Tool] = [
             BashTool(),
+            RecallTool(provider=provider),
             WeatherTool(),
             LaunchSubagentTool(provider=provider, session=session),
             WebSearchTool(),

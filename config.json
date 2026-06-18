@@ -1,12 +1,12 @@
 {
   "llm": {
     "model": "gemma4:e2b-mlx",
-    "base_url": "http://localhost:11434/api",
-    "timeout": 60
+    "base_url": "http://localhost:11434/api"
   },
   "memory": {
     "enabled": true,
-    "max_recent_sessions": 5
+    "max_recent_sessions": 5,
+    "enable_preamble": true
   },
   "mcp": {
     "enabled": false,

@@ -32,7 +32,7 @@ TAVILY_API_KEY=tvly-your-key-here
 ## Usage
 
 ```bash
-uv run python src/shared/main.py
+uv run python -m src.shared.main
 ```
 
 Example session:

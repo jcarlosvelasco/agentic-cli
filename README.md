@@ -12,7 +12,8 @@
 ## Installation
 
 ```bash
-uv sync --dev
+uv add -r requirements.txt
+uv add --group dev -r requirements-dev.txt
 ```
 
 ## Configuration

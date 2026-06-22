@@ -18,7 +18,7 @@ _session = PromptSession(history=FileHistory(str(Path.home() / ".opencode_histor
 
 def display_welcome() -> None:
     console.print()
-    console.rule("[bold blue]coding-agent[/]")
+    console.rule("[bold blue]agentic-cli[/]")
     console.print()
 
 

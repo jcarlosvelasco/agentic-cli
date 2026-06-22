@@ -1,15 +1,19 @@
 import asyncio
 from collections.abc import Callable
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, computed_field
 from pydantic.config import ConfigDict
 
+from config.AppConfig import AppConfig
+from shared.config import load_config
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
 from src.memory.interface.Session import Session
 from src.shared.console import (
+    LiveController,
+    confirm_execution,
     display_assistant_message,
     display_tool_call,
     display_tool_result,
@@ -31,6 +35,14 @@ class Agent(BaseModel):
     system_prompt: str | None = None
     session: Session
 
+    runner: ToolRunner = Field(default_factory=ToolRunner)
+    config: AppConfig = load_config()
+
+    @computed_field
+    @property
+    def tools_by_name(self) -> dict[str, Tool[Any]]:
+        return {tool.name: tool for tool in self.tools}
+
     async def stream_run(self, task) -> str:
         if self.system_prompt:
             self.append(Message(role=MessageRole.SYSTEM, content=self.system_prompt))
@@ -38,11 +50,10 @@ class Agent(BaseModel):
         return await self._stream_loop()
 
     async def _stream_loop(
-        self, on_content: Callable[[str], None] | None = None
+        self,
+        on_content: Callable[[str], None] | None = None,
+        ui_control: LiveController | None = None,
     ) -> str:
-        runner = ToolRunner()
-        tools_by_name = {tool.name: tool for tool in self.tools}
-
         for _ in range(self.max_iterations):
             stream = self.provider.stream_chat(
                 self.messages,
@@ -64,7 +75,7 @@ class Agent(BaseModel):
                     if chunk.done:
                         break
             else:
-                async with streaming_panel(self.name) as update:
+                async with streaming_panel(self.name) as (update, ctrl):
                     async for chunk in stream:
                         if chunk.content:
                             full_content += chunk.content
@@ -88,14 +99,35 @@ class Agent(BaseModel):
                 async def execute_tool_call(
                     call: ToolCall,
                 ) -> Tuple[str, ToolResult] | None:
-                    display_tool_call(self.name, call.name, call.args)
-                    tool = tools_by_name.get(call.name)
+                    tool = self.tools_by_name.get(call.name)
 
-                    # if tool and confirm_execution(call.name, call.args):
-                    if tool:
-                        result = await runner.run(tool, call.args)
+                    if not tool:
+                        return
+
+                    if on_content:
+                        on_content(f"🔧 **{call.name}** `{call.args}`")
+                    else:
+                        display_tool_call(self.name, call.name, call.args)
+
+                    if self.config.tools.confirm_execution and ui_control:
+                        ui_control.pause()
+                        confirmed = confirm_execution(call.name, call.args)
+                        ui_control.resume()
+                        if not confirmed:
+                            return call.id, ToolResult(
+                                success=False,
+                                message="Tool execution cancelled by user",
+                            )
+
+                    result = await self.runner.run(
+                        tool, call.args, should_confirm=False
+                    )
+
+                    if on_content:
+                        on_content(f"🔧 **{call.name}** → `{result.data}`")
+                    else:
                         display_tool_result(self.name, result.data)
-                        return call.id, result
+                    return call.id, result
 
                 results = await asyncio.gather(
                     *[execute_tool_call(call) for call in last_tool_calls]
@@ -124,11 +156,14 @@ class Agent(BaseModel):
         return "Max iterations reached"
 
     async def _stream_chat(
-        self, user_input: str, on_content: Callable[[str], None] | None = None
+        self,
+        user_input: str,
+        on_content: Callable[[str], None] | None = None,
+        ui_control: LiveController | None = None,
     ) -> str:
         self.append(Message(role=MessageRole.USER, content=user_input))
 
-        return await self._stream_loop(on_content=on_content)
+        return await self._stream_loop(on_content=on_content, ui_control=ui_control)
 
     async def run(self, task: str) -> str:
         if self.system_prompt:
@@ -168,11 +203,14 @@ class Agent(BaseModel):
                     display_tool_call(self.name, call.name, call.args)
                     tool = tools_by_name.get(call.name)
 
-                    # if tool and confirm_execution(call.name, call.args):
-                    if tool:
-                        result = await runner.run(tool, call.args)
-                        display_tool_result(self.name, result.data)
-                        return call.id, result
+                    if not tool:
+                        return
+
+                    result = await runner.run(
+                        tool, call.args, self.config.tools.confirm_execution
+                    )
+                    display_tool_result(self.name, result.data)
+                    return call.id, result
 
                 results = await asyncio.gather(
                     *[execute_tool_call(call) for call in response.tool_calls]

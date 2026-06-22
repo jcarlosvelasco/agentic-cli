@@ -20,7 +20,8 @@
     "summarization_keep": 6
   },
   "tools": {
-    "enabled": true
+    "enabled": true,
+    "confirm_execution": true
   },
   "ui": {
     "streaming": true

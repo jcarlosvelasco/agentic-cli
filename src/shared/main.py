@@ -59,12 +59,15 @@ async def main():
                 await compact(agent, config.compaction.strategy, provider)
 
             user_input = await get_user_input()
-            async with streaming_panel(agent.name) as update:
-                if config.ui.streaming:
-                    await agent._stream_chat(user_input, on_content=update)
-                else:
-                    result = await agent.chat(user_input)
-                    display_assistant_message(agent.name, result)
+
+            if config.ui.streaming:
+                async with streaming_panel(agent.name) as (update, ctrl):
+                    await agent._stream_chat(
+                        user_input, on_content=update, ui_control=ctrl
+                    )
+            else:
+                result = await agent.chat(user_input)
+                display_assistant_message(agent.name, result)
     except KeyboardInterrupt:
         if config.memory.enabled:
             display_warning("Interrupted by user. Summarizing session...")

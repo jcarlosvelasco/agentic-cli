@@ -1,6 +1,4 @@
-import urllib.error
-import urllib.request
-
+import httpx
 from pydantic import BaseModel, Field
 
 from src.tools.interfaces.Tool import Tool, ToolResult
@@ -24,11 +22,8 @@ class WeatherTool(Tool[WeatherToolArgs]):
         city = args.city
         url = f"https://wttr.in/{city}?format=%C+%t+%w+%h"
         try:
-            with urllib.request.urlopen(url, timeout=10) as response:
-                return ToolResult(
-                    success=True, data=response.read().decode("utf-8").strip()
-                )
-        except urllib.error.URLError as e:
-            return ToolResult(
-                success=False, message=f"Error fetching weather: {e.reason}"
-            )
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(url)
+                return ToolResult(success=True, data=response.text.strip())
+        except httpx.HTTPError as e:
+            return ToolResult(success=False, message=f"Error fetching weather: {e}")

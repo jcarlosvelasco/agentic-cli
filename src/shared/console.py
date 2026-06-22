@@ -72,12 +72,27 @@ def confirm_execution(tool_name: str, tool_input: object) -> bool:
     )
 
 
+class LiveController:
+    def __init__(self):
+        self.live: Live | None = None
+
+    def pause(self) -> None:
+        if self.live:
+            self.live.stop()
+
+    def resume(self) -> None:
+        if self.live:
+            self.live.start()
+
+
 @asynccontextmanager
 async def streaming_panel(
     agent_name: str, initial: str = ""
-) -> AsyncGenerator[Callable[[str], None], None]:
+) -> AsyncGenerator[tuple[Callable[[str], None], LiveController], None]:
     spinner = Spinner("dots", text="[yellow]Thinking...[/]")
+    ctrl = LiveController()
     with Live(spinner, refresh_per_second=10, vertical_overflow="visible") as live:
+        ctrl.live = live
 
         def update(content: str) -> None:
             panel = Panel(
@@ -89,7 +104,7 @@ async def streaming_panel(
             )
             live.update(panel)
 
-        yield update
+        yield update, ctrl
 
 
 @asynccontextmanager

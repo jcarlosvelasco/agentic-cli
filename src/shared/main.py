@@ -9,7 +9,7 @@ from memory.preamble import preamble
 from shared.config import load_config
 from src.agent.schema.Agent import Agent
 from src.llm.providers.ollama.OllamaProvider import OllamaProvider
-from src.mcp.mpc_registry import MCPRegistry
+from src.mcp.mcp_registry import MCPRegistry
 from src.memory.interface.Session import Session
 from src.memory.summarize import summarize
 from src.shared.console import (

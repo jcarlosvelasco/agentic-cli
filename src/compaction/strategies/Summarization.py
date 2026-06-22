@@ -19,8 +19,6 @@ class Summarization(Compaction):
         if len(messages) <= self.threshold:
             return messages
 
-        print(f"Compacting {len(messages)} messages...")
-
         messages_to_summarize = [
             m for m in messages[: -self.keep_last_n] if m.role != MessageRole.SYSTEM
         ]

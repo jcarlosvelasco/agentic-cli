@@ -11,8 +11,6 @@ class SlidingWindow(Compaction):
         if len(messages) <= self.window_size:
             return messages
 
-        print(f"Compacting {len(messages)} messages...")
-
         system_messages = [m for m in messages if m.role == MessageRole.SYSTEM]
         non_system = [m for m in messages if m.role != MessageRole.SYSTEM]
 

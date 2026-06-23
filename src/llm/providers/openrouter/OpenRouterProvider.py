@@ -30,13 +30,19 @@ class OpenRouterProvider(BaseLLMProvider):
         for message in messages:
             msg: OpenRouterMessage = {
                 "role": message.role.value,
-                "content": message.content,
             }
+            if message.tool_calls:
+                msg["content"] = None
+            elif message.content:
+                msg["content"] = message.content
+            else:
+                msg["content"] = None
             if message.tool_calls:
                 msg["tool_calls"] = [
                     {
                         "id": tc.id,
-                        "function": {"name": tc.name, "arguments": tc.args},
+                        "type": "function",
+                        "function": {"name": tc.name, "arguments": json.dumps(tc.args)},
                     }
                     for tc in message.tool_calls
                 ]
@@ -115,7 +121,7 @@ class OpenRouterProvider(BaseLLMProvider):
             raise ChatResponseError("No choices in response", response.status_code)
 
         message = choices[0].get("message", {})
-        content = message.get("content")
+        content = message.get("content") or ""
 
         tool_calls: List[ToolCall] = []
         for call in message.get("tool_calls", []):
@@ -123,7 +129,7 @@ class OpenRouterProvider(BaseLLMProvider):
                 ToolCall(
                     id=call["id"],
                     name=call["function"]["name"],
-                    args=call["function"]["arguments"],
+                    args=json.loads(call["function"]["arguments"]),
                 )
             )
 
@@ -159,9 +165,6 @@ class OpenRouterProvider(BaseLLMProvider):
 
                     payload_line = line.removeprefix("data: ")
 
-                    if payload_line.strip() == "[DONE]":
-                        break
-
                     try:
                         data = json.loads(payload_line)
                     except Exception as e:
@@ -187,7 +190,11 @@ class OpenRouterProvider(BaseLLMProvider):
                     for call in delta.get("tool_calls", []):
                         idx = call["index"]
                         if idx not in tool_call_deltas:
-                            tool_call_deltas[idx] = {"id": "", "name": "", "arguments": ""}
+                            tool_call_deltas[idx] = {
+                                "id": "",
+                                "name": "",
+                                "arguments": "",
+                            }
                         tc = tool_call_deltas[idx]
                         if call.get("id"):
                             tc["id"] = call["id"]
@@ -214,7 +221,13 @@ class OpenRouterProvider(BaseLLMProvider):
                             done=True, content=content, tool_calls=tool_calls
                         )
                         break
-                    else:
+
+                    if done:
                         yield StreamLLMChatResponse(
-                            done=False, content=content, tool_calls=[]
+                            done=True, content=content, tool_calls=[]
                         )
+                        break
+
+                    yield StreamLLMChatResponse(
+                        done=False, content=content, tool_calls=[]
+                    )

@@ -1,31 +1,35 @@
 import json
-from typing import Any, AsyncIterator, List
+from this import s
+from typing import Any, List
 
 import httpx
+from typing_extensions import AsyncIterator
 
-from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider, StreamLLMChatResponse
-from src.llm.providers.ollama.OllamaMessage import OllamaMessage
-from src.llm.schema.ChatConnectionError import ChatConnectionError
-from src.llm.schema.ChatResponseError import ChatResponseError
-from src.llm.schema.ChatTimeoutError import ChatTimeoutError
-from src.llm.schema.LLMChatResponse import LLMChatResponse
-from src.llm.schema.Message import Message
-from src.llm.schema.ToolCall import ToolCall
-from src.tools.interfaces.Tool import Tool
+from llm.interfaces.BaseLLMProvider import BaseLLMProvider
+from llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse
+from llm.providers.openrouter.OpenRouterMessage import OpenRouterMessage
+from llm.schema.ChatConnectionError import ChatConnectionError
+from llm.schema.ChatResponseError import ChatResponseError
+from llm.schema.ChatTimeoutError import ChatTimeoutError
+from llm.schema.LLMChatResponse import LLMChatResponse
+from llm.schema.Message import Message
+from llm.schema.ToolCall import ToolCall
+from tools.interfaces.Tool import Tool
 
 
-class OllamaProvider(BaseLLMProvider):
-    def __init__(self, model: str, base_url: str):
+class OpenRouterProvider(BaseLLMProvider):
+    def __init__(self, model: str, base_url: str, api_key: str):
         self.model = model
         self.base_url = base_url
+        self.api_key = api_key
 
     def format_messages(
         self,
         messages: List[Message],
-    ) -> List[OllamaMessage]:
-        result: List[OllamaMessage] = []
+    ) -> List[OpenRouterMessage]:
+        result: List[OpenRouterMessage] = []
         for message in messages:
-            msg: OllamaMessage = {
+            msg: OpenRouterMessage = {
                 "role": message.role.value,
                 "content": message.content,
             }
@@ -44,18 +48,17 @@ class OllamaProvider(BaseLLMProvider):
 
         return result
 
-    def get_ollama_schema(self, tool: Tool) -> dict[str, Any]:
+    def get_openrouter_schema(self, tool: Tool) -> dict[str, Any]:
         schema = {
             "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-            },
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": {},
         }
 
         if tool.args_schema:
             json_schema = tool.args_schema.model_json_schema()
-            schema["function"]["parameters"] = json_schema
+            schema["parameters"] = json_schema
 
         return schema
 
@@ -66,10 +69,8 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.model,
             "messages": self.format_messages(messages),
             "stream": False,
-            "options": {
-                "temperature": temperature,
-            },
-            "tools": [self.get_ollama_schema(tool) for tool in tools],
+            "temperature": temperature,
+            "tools": [self.get_openrouter_schema(tool) for tool in tools],
         }
         try:
             async with httpx.AsyncClient(timeout=60) as client:
@@ -127,10 +128,8 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.model,
             "messages": self.format_messages(messages),
             "stream": True,
-            "options": {
-                "temperature": temperature,
-            },
-            "tools": [self.get_ollama_schema(tool) for tool in tools],
+            "temperature": temperature,
+            "tools": [self.get_openrouter_schema(tool) for tool in tools],
         }
 
         async with httpx.AsyncClient(timeout=60) as client:

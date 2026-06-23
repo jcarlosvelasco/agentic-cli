@@ -1,10 +1,14 @@
 import asyncio
+import os
 from os import path
+
+from dotenv import load_dotenv
 
 from compaction.CompactionRunner import run_compaction
 from compaction.CompactionStrategy import CompactionStrategy
 from config.AppConfig import AppConfig
 from llm.interfaces.BaseLLMProvider import BaseLLMProvider
+from llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
 from memory.preamble import preamble
 from shared.config import load_config
 from src.agent.schema.Agent import Agent
@@ -24,9 +28,19 @@ from src.tools.registry import ToolRegistry
 
 
 async def main():
+    load_dotenv()
     config = load_config()
 
-    provider = OllamaProvider(model=config.llm.model, base_url=config.llm.base_url)
+    if not config.llm.api_key:
+        raise ValueError(f"API key not set for {config.llm.model}")
+
+    provider: BaseLLMProvider = OpenRouterProvider(
+        model="free",
+        base_url="https://openrouter.ai/api/v1/chat/completions",
+        api_key=os.getenv(config.llm.api_key, ""),
+    )
+
+    # provider = OllamaProvider(model=config.llm.model, base_url=config.llm.base_url)
     session = Session()
     registry = ToolRegistry(provider=provider, session=session, config=config)
     mcp_registry: MCPRegistry | None = None

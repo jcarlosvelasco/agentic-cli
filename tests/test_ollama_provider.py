@@ -10,15 +10,12 @@ from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.ChatTimeoutError import ChatTimeoutError
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
-
+from tests.conftest import MockTool
 
 
 @pytest.fixture
 def provider():
     return OllamaProvider(model="test-model", base_url="http://localhost:11434/api")
-
-
-from tests.conftest import MockTool
 
 
 @pytest.fixture
@@ -189,7 +186,7 @@ class TestChat:
         mock_response.json.return_value = {"error": "model not found"}
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with pytest.raises(ChatResponseError) as exc:
+        with pytest.raises(ChatResponseError):
             await provider.chat(
                 [Message(role=MessageRole.USER, content="hi")],
                 [],
@@ -230,11 +227,15 @@ class TestStreamChat:
     async def test_streaming_content_chunks(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            json.dumps({"message": {"role": "assistant", "content": "Hello"}}),
-            json.dumps({"message": {"role": "assistant", "content": " World"}}),
-            json.dumps({"message": {"role": "assistant", "content": "", "done": "true"}}),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                json.dumps({"message": {"role": "assistant", "content": "Hello"}}),
+                json.dumps({"message": {"role": "assistant", "content": " World"}}),
+                json.dumps(
+                    {"message": {"role": "assistant", "content": "", "done": "true"}}
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat(
@@ -254,21 +255,28 @@ class TestStreamChat:
     async def test_stream_with_tool_calls(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            json.dumps({
-                "message": {
-                    "role": "assistant",
-                    "content": "",
-                    "tool_calls": [
-                        {
-                            "id": "c1",
-                            "function": {"name": "tool", "arguments": {"k": "v"}},
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                json.dumps(
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "c1",
+                                    "function": {
+                                        "name": "tool",
+                                        "arguments": {"k": "v"},
+                                    },
+                                }
+                            ],
+                            "done": "true",
                         }
-                    ],
-                    "done": "true",
-                }
-            }),
-        ])
+                    }
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat(
@@ -290,9 +298,11 @@ class TestStreamChat:
 
         mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.aiter_lines = lambda: self._async_iter([
-            json.dumps({"error": "server error"}),
-        ])
+        mock_response.aiter_lines = lambda: self._async_iter(
+            [
+                json.dumps({"error": "server error"}),
+            ]
+        )
         mock_stream = MagicMock()
         mock_stream.__aenter__.return_value = mock_response
         mock_client.stream.return_value = mock_stream
@@ -305,9 +315,11 @@ class TestStreamChat:
     async def test_stream_invalid_json(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "not-json",
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "not-json",
+            ]
+        )
 
         with pytest.raises(ChatResponseError):
             async for _ in provider.stream_chat([], []):

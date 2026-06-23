@@ -2,12 +2,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from config.AppConfig import AppConfig
 from src.agent.schema.Agent import Agent
 from src.llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse
 from src.llm.schema.LLMChatResponse import LLMChatResponse
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
-from config.AppConfig import AppConfig
 from src.memory.interface.Session import Session
 from src.tools.interfaces.Tool import Tool, ToolResult
 from tests.conftest import MockTool
@@ -57,6 +57,7 @@ def _make_stream(chunks):
     async def stream(*args, **kwargs):
         for c in chunks:
             yield c
+
     return stream
 
 
@@ -97,11 +98,13 @@ class TestAgentStreamLoop:
             mock_ctrl,
         )
 
-        mock_provider.stream_chat = _make_stream([
-            StreamLLMChatResponse(content="Hello", done=False),
-            StreamLLMChatResponse(content=" World", done=False),
-            StreamLLMChatResponse(content="", done=True),
-        ])
+        mock_provider.stream_chat = _make_stream(
+            [
+                StreamLLMChatResponse(content="Hello", done=False),
+                StreamLLMChatResponse(content=" World", done=False),
+                StreamLLMChatResponse(content="", done=True),
+            ]
+        )
 
         agent = Agent(
             name="test",
@@ -140,7 +143,9 @@ class TestAgentStreamLoop:
         tool_call = ToolCall(id="call_1", name="mock_tool", args={"query": "test"})
 
         mock_provider.stream_chat = _make_stream_tool_then_text(
-            tool_chunks=[StreamLLMChatResponse(content="", tool_calls=[tool_call], done=True)],
+            tool_chunks=[
+                StreamLLMChatResponse(content="", tool_calls=[tool_call], done=True)
+            ],
             text_chunks=[StreamLLMChatResponse(content="done", done=True)],
         )
 
@@ -266,9 +271,11 @@ class TestAgentStreamLoop:
 
         tool_call = ToolCall(id="c1", name="mock_tool", args={})
 
-        mock_provider.stream_chat = _make_stream([
-            StreamLLMChatResponse(tool_calls=[tool_call], done=True),
-        ])
+        mock_provider.stream_chat = _make_stream(
+            [
+                StreamLLMChatResponse(tool_calls=[tool_call], done=True),
+            ]
+        )
 
         mock_tool = MagicMock(spec=Tool)
         mock_tool.name = "mock_tool"
@@ -329,9 +336,7 @@ class TestAgentStreamLoop:
         agent.runner = AsyncMock()
         agent.runner.run.return_value = ToolResult(success=True, data="output")
 
-        result = await agent._stream_loop(
-            on_content=lambda x: None, ui_control=mock_ctrl
-        )
+        await agent._stream_loop(on_content=lambda x: None, ui_control=mock_ctrl)
 
         mock_ctrl.pause.assert_called_once()
         mock_ctrl.resume.assert_called_once()
@@ -348,9 +353,11 @@ class TestAgentStreamLoop:
             mock_ctrl,
         )
 
-        mock_provider.stream_chat = _make_stream([
-            StreamLLMChatResponse(content="Done", done=True),
-        ])
+        mock_provider.stream_chat = _make_stream(
+            [
+                StreamLLMChatResponse(content="Done", done=True),
+            ]
+        )
 
         agent = Agent(
             name="test",

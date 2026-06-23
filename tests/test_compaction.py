@@ -1,5 +1,3 @@
-import pytest
-
 from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.compaction.strategies.SlidingWindow import SlidingWindow
@@ -20,9 +18,7 @@ class TestSlidingWindow:
         strategy = SlidingWindow(window_size=5)
         result = await strategy.compact(messages)
         system_count = sum(1 for m in result if m.role == MessageRole.SYSTEM)
-        non_system_count = sum(
-            1 for m in result if m.role != MessageRole.SYSTEM
-        )
+        non_system_count = sum(1 for m in result if m.role != MessageRole.SYSTEM)
         assert system_count == 5
         assert non_system_count == 5
         assert result[0].role == MessageRole.SYSTEM
@@ -39,9 +35,7 @@ class TestSlidingWindow:
         strategy = SlidingWindow(window_size=2)
         result = await strategy.compact(messages)
         system_msgs = [m for m in result if m.role == MessageRole.SYSTEM]
-        non_system_msgs = [
-            m for m in result if m.role != MessageRole.SYSTEM
-        ]
+        non_system_msgs = [m for m in result if m.role != MessageRole.SYSTEM]
         assert len(system_msgs) == 2
         assert len(non_system_msgs) == 2
         assert non_system_msgs == [
@@ -79,29 +73,22 @@ class TestSummarization:
     async def test_returns_all_when_below_threshold(
         self, sample_messages, mock_provider
     ):
-        strategy = Summarization(
-            threshold=10, keep_last_n=3, provider=mock_provider
-        )
+        strategy = Summarization(threshold=10, keep_last_n=3, provider=mock_provider)
         result = await strategy.compact(sample_messages)
         assert result == sample_messages
 
     async def test_summarizes_when_above_threshold(self):
         provider = MockProvider(
-            chat_responses=[
-                LLMChatResponse(content="Summary of conversation.")
-            ]
+            chat_responses=[LLMChatResponse(content="Summary of conversation.")]
         )
 
         messages = [
-            Message(role=MessageRole.USER, content=f"msg{i}")
-            for i in range(25)
+            Message(role=MessageRole.USER, content=f"msg{i}") for i in range(25)
         ]
         sys_msg = Message(role=MessageRole.SYSTEM, content="be helpful")
         all_msgs = [sys_msg] + messages
 
-        strategy = Summarization(
-            threshold=10, keep_last_n=5, provider=provider
-        )
+        strategy = Summarization(threshold=10, keep_last_n=5, provider=provider)
         result = await strategy.compact(all_msgs)
 
         assert len(provider.chat_calls) == 1
@@ -111,12 +98,8 @@ class TestSummarization:
             for m in summarization_msgs
         )
 
-        system_results = [
-            m for m in result if m.role == MessageRole.SYSTEM
-        ]
-        summary_results = [
-            m for m in result if "Conversation summary" in m.content
-        ]
+        system_results = [m for m in result if m.role == MessageRole.SYSTEM]
+        summary_results = [m for m in result if "Conversation summary" in m.content]
         recent_results = [
             m
             for m in result
@@ -133,15 +116,12 @@ class TestSummarization:
         )
 
         messages = [
-            Message(role=MessageRole.USER, content=f"msg{i}")
-            for i in range(15)
+            Message(role=MessageRole.USER, content=f"msg{i}") for i in range(15)
         ]
         sys_msg = Message(role=MessageRole.SYSTEM, content="be helpful")
         all_msgs = [sys_msg] + messages
 
-        strategy = Summarization(
-            threshold=5, keep_last_n=3, provider=provider
-        )
+        strategy = Summarization(threshold=5, keep_last_n=3, provider=provider)
         result = await strategy.compact(all_msgs)
 
         assert result[0].role == MessageRole.SYSTEM
@@ -153,13 +133,10 @@ class TestSummarization:
         )
 
         messages = [
-            Message(role=MessageRole.USER, content=f"msg{i}")
-            for i in range(15)
+            Message(role=MessageRole.USER, content=f"msg{i}") for i in range(15)
         ]
 
-        strategy = Summarization(
-            threshold=5, keep_last_n=3, provider=provider
-        )
+        strategy = Summarization(threshold=5, keep_last_n=3, provider=provider)
         await strategy.compact(messages)
 
         _, _, temperature = provider.chat_calls[0]
@@ -171,13 +148,10 @@ class TestSummarization:
         )
 
         messages = [
-            Message(role=MessageRole.SYSTEM, content=f"sys{i}")
-            for i in range(15)
+            Message(role=MessageRole.SYSTEM, content=f"sys{i}") for i in range(15)
         ]
 
-        strategy = Summarization(
-            threshold=5, keep_last_n=3, provider=provider
-        )
+        strategy = Summarization(threshold=5, keep_last_n=3, provider=provider)
         result = await strategy.compact(messages)
 
         assert len(result) > 0
@@ -185,18 +159,13 @@ class TestSummarization:
         assert len(summary_msgs) == 1
 
     async def test_summary_called_with_correct_messages(self):
-        provider = MockProvider(
-            chat_responses=[LLMChatResponse(content="Summary.")]
-        )
+        provider = MockProvider(chat_responses=[LLMChatResponse(content="Summary.")])
 
         messages = [
-            Message(role=MessageRole.USER, content=f"normal_msg{i}")
-            for i in range(15)
+            Message(role=MessageRole.USER, content=f"normal_msg{i}") for i in range(15)
         ]
 
-        strategy = Summarization(
-            threshold=5, keep_last_n=3, provider=provider
-        )
+        strategy = Summarization(threshold=5, keep_last_n=3, provider=provider)
         await strategy.compact(messages)
 
         summarization_msgs = provider.chat_calls[0][0]
@@ -204,15 +173,11 @@ class TestSummarization:
         assert summarization_msgs[0].role == MessageRole.SYSTEM
         assert "summarizer" in summarization_msgs[0].content.lower()
         assert summarization_msgs[-1].role == MessageRole.USER
-        assert (
-            "Please summarize" in summarization_msgs[-1].content
-        )
+        assert "Please summarize" in summarization_msgs[-1].content
 
 
 class TestCompactionRunner:
-    async def test_sliding_window_strategy(
-        self, sample_messages, mock_provider
-    ):
+    async def test_sliding_window_strategy(self, sample_messages, mock_provider):
         result = await run_compaction(
             CompactionStrategy.SLIDING_WINDOW, sample_messages, mock_provider
         )
@@ -227,13 +192,10 @@ class TestCompactionRunner:
         assert result == sample_messages
 
     async def test_summarization_strategy(self):
-        provider = MockProvider(
-            chat_responses=[LLMChatResponse(content="Summary.")]
-        )
+        provider = MockProvider(chat_responses=[LLMChatResponse(content="Summary.")])
 
         messages = [
-            Message(role=MessageRole.USER, content=f"msg{i}")
-            for i in range(25)
+            Message(role=MessageRole.USER, content=f"msg{i}") for i in range(25)
         ]
         result = await run_compaction(
             CompactionStrategy.SUMMARIZATION, messages, provider

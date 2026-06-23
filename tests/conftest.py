@@ -2,7 +2,6 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Any, AsyncIterator, List
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -64,7 +63,9 @@ def sample_messages() -> list[Message]:
         Message(role=MessageRole.USER, content="Hello"),
         Message(role=MessageRole.ASSISTANT, content="Hi there!"),
         Message(role=MessageRole.USER, content="What is Python?"),
-        Message(role=MessageRole.ASSISTANT, content="Python is a programming language."),
+        Message(
+            role=MessageRole.ASSISTANT, content="Python is a programming language."
+        ),
     ]
 
 

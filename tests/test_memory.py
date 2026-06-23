@@ -1,10 +1,7 @@
 import json
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from src.llm.schema.Message import Message, MessageRole
 from src.memory.interface.Session import Session
@@ -60,9 +57,7 @@ class TestSession:
         tmpdir = tempfile.mkdtemp()
         mock_get_folder.return_value = tmpdir
 
-        session = Session(
-            messages=[Message(role=MessageRole.USER, content="hello")]
-        )
+        session = Session(messages=[Message(role=MessageRole.USER, content="hello")])
         session.save()
 
         session_file = Path(tmpdir) / f"session_{session.id}.json"
@@ -118,9 +113,17 @@ class TestSessionIndex:
     def test_update_updates_existing_entry(self, mock_get_folder, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
-            index_path.write_text(json.dumps([
-                {"summary": "old", "tags": [], "session_path": f"{tmpdir}/session_xyz"}
-            ]))
+            index_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "summary": "old",
+                            "tags": [],
+                            "session_path": f"{tmpdir}/session_xyz",
+                        }
+                    ]
+                )
+            )
             mock_get_path.return_value = str(index_path)
             mock_get_folder.return_value = str(tmpdir)
 
@@ -138,7 +141,9 @@ class TestSessionIndex:
             index_path = Path(tmpdir) / "session_index.json"
             mock_get_path.return_value = str(index_path)
 
-            with patch("src.memory.interface.SessionIndex.get_session_folder_path") as mock_get_folder:
+            with patch(
+                "src.memory.interface.SessionIndex.get_session_folder_path"
+            ) as mock_get_folder:
                 mock_get_folder.return_value = str(tmpdir)
                 SessionIndex.update("s1", "summary", [])
 
@@ -174,13 +179,17 @@ class TestPreamble:
     async def test_formats_entries_correctly(self, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
-            index_path.write_text(json.dumps([
-                {
-                    "summary": "Built a feature",
-                    "tags": ["python", "testing"],
-                    "session_path": f"{tmpdir}/20240101120000",
-                }
-            ]))
+            index_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "summary": "Built a feature",
+                            "tags": ["python", "testing"],
+                            "session_path": f"{tmpdir}/20240101120000",
+                        }
+                    ]
+                )
+            )
             mock_get_path.return_value = str(index_path)
 
             config = MagicMock()
@@ -195,10 +204,18 @@ class TestPreamble:
     async def test_respects_max_recent_sessions(self, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
-            index_path.write_text(json.dumps([
-                {"summary": f"Session {i}", "tags": [], "session_path": f"{tmpdir}/{i}"}
-                for i in range(10)
-            ]))
+            index_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "summary": f"Session {i}",
+                            "tags": [],
+                            "session_path": f"{tmpdir}/{i}",
+                        }
+                        for i in range(10)
+                    ]
+                )
+            )
             mock_get_path.return_value = str(index_path)
 
             config = MagicMock()

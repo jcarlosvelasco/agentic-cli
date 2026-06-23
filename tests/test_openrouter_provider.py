@@ -10,7 +10,6 @@ from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.ChatTimeoutError import ChatTimeoutError
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
-from src.tools.interfaces.Tool import Tool, ToolResult
 
 
 @pytest.fixture
@@ -128,7 +127,7 @@ class TestChat:
         mock_response.json.return_value = {"choices": []}
         mock_client.post.return_value = mock_response
 
-        with pytest.raises(ChatResponseError) as exc:
+        with pytest.raises(ChatResponseError):
             await provider.chat(
                 [Message(role=MessageRole.USER, content="hi")],
                 [],
@@ -212,17 +211,30 @@ class TestStreamChat:
     async def test_streaming_content_chunks(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "Hello"}, "finish_reason": None}]
-            }),
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": " World"}, "finish_reason": None}]
-            }),
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": ""}, "finish_reason": "stop"}]
-            }),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {"delta": {"content": "Hello"}, "finish_reason": None}
+                        ]
+                    }
+                ),
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {"delta": {"content": " World"}, "finish_reason": None}
+                        ]
+                    }
+                ),
+                "data: "
+                + json.dumps(
+                    {"choices": [{"delta": {"content": ""}, "finish_reason": "stop"}]}
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat(
@@ -242,12 +254,15 @@ class TestStreamChat:
     async def test_skips_non_data_lines(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            ": keep-alive",
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "Hi"}, "finish_reason": "stop"}]
-            }),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                ": keep-alive",
+                "data: "
+                + json.dumps(
+                    {"choices": [{"delta": {"content": "Hi"}, "finish_reason": "stop"}]}
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat([], []):
@@ -260,42 +275,68 @@ class TestStreamChat:
     async def test_tool_call_delta_accumulation(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "data: " + json.dumps({
-                "choices": [{
-                    "delta": {
-                        "tool_calls": [{
-                            "index": 0,
-                            "id": "call_1",
-                            "function": {"name": "get_weather", "arguments": ""},
-                        }],
-                    },
-                    "finish_reason": None,
-                }]
-            }),
-            "data: " + json.dumps({
-                "choices": [{
-                    "delta": {
-                        "tool_calls": [{
-                            "index": 0,
-                            "function": {"arguments": '{"city": '},
-                        }],
-                    },
-                    "finish_reason": None,
-                }]
-            }),
-            "data: " + json.dumps({
-                "choices": [{
-                    "delta": {
-                        "tool_calls": [{
-                            "index": 0,
-                            "function": {"arguments": '"London"}'},
-                        }],
-                    },
-                    "finish_reason": "tool_calls",
-                }]
-            }),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": 0,
+                                            "id": "call_1",
+                                            "function": {
+                                                "name": "get_weather",
+                                                "arguments": "",
+                                            },
+                                        }
+                                    ],
+                                },
+                                "finish_reason": None,
+                            }
+                        ]
+                    }
+                ),
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": 0,
+                                            "function": {"arguments": '{"city": '},
+                                        }
+                                    ],
+                                },
+                                "finish_reason": None,
+                            }
+                        ]
+                    }
+                ),
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": 0,
+                                            "function": {"arguments": '"London"}'},
+                                        }
+                                    ],
+                                },
+                                "finish_reason": "tool_calls",
+                            }
+                        ]
+                    }
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat([], []):
@@ -311,19 +352,40 @@ class TestStreamChat:
     async def test_multiple_tool_indices(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "data: " + json.dumps({
-                "choices": [{
-                    "delta": {
-                        "tool_calls": [
-                            {"index": 0, "id": "c1", "function": {"name": "tool_a", "arguments": '{"x": 1}'}},
-                            {"index": 1, "id": "c2", "function": {"name": "tool_b", "arguments": '{"y": 2}'}},
-                        ],
-                    },
-                    "finish_reason": "tool_calls",
-                }]
-            }),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": 0,
+                                            "id": "c1",
+                                            "function": {
+                                                "name": "tool_a",
+                                                "arguments": '{"x": 1}',
+                                            },
+                                        },
+                                        {
+                                            "index": 1,
+                                            "id": "c2",
+                                            "function": {
+                                                "name": "tool_b",
+                                                "arguments": '{"y": 2}',
+                                            },
+                                        },
+                                    ],
+                                },
+                                "finish_reason": "tool_calls",
+                            }
+                        ]
+                    }
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat([], []):
@@ -337,9 +399,11 @@ class TestStreamChat:
     async def test_error_in_stream_response(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "data: " + json.dumps({"error": "rate limited"}),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "data: " + json.dumps({"error": "rate limited"}),
+            ]
+        )
 
         with pytest.raises(ChatResponseError):
             async for _ in provider.stream_chat([], []):
@@ -349,12 +413,19 @@ class TestStreamChat:
     async def test_skips_empty_choices(self, mock_client_class, provider):
         mock_client = MagicMock()
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream([
-            "data: " + json.dumps({"choices": []}),
-            "data: " + json.dumps({
-                "choices": [{"delta": {"content": "final"}, "finish_reason": "stop"}]
-            }),
-        ])
+        mock_client.stream.return_value = self._build_mock_stream(
+            [
+                "data: " + json.dumps({"choices": []}),
+                "data: "
+                + json.dumps(
+                    {
+                        "choices": [
+                            {"delta": {"content": "final"}, "finish_reason": "stop"}
+                        ]
+                    }
+                ),
+            ]
+        )
 
         chunks = []
         async for chunk in provider.stream_chat([], []):

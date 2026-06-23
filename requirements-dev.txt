@@ -1,2 +1,4 @@
 ty
 ruff
+pytest
+pytest-asyncio

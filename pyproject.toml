@@ -18,6 +18,8 @@ dependencies = [
 dev = [
     "ruff>=0.15.15",
     "ty>=0.0.42",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.0",
 ]
 
 [tool.uv]

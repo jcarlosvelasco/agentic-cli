@@ -1,8 +1,8 @@
 {
   "llm": {
+    "provider": "ollama",
     "model": "gemma4:e2b-mlx",
-    "base_url": "http://localhost:11434/api",
-    "api_key": "OPENROUTER_API_KEY"
+    "base_url": "http://localhost:11434/api"
   },
   "memory": {
     "enabled": true,

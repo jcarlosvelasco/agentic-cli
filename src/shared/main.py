@@ -1,6 +1,6 @@
 import asyncio
-import os
 from os import path
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -8,8 +8,7 @@ from src.agent.schema.Agent import Agent
 from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.config.AppConfig import AppConfig
-from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
-from src.llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
+from src.llm.providers import create_provider
 from src.mcp.mcp_registry import MCPRegistry
 from src.memory.interface.Session import Session
 from src.memory.preamble import preamble
@@ -30,16 +29,7 @@ async def main():
     load_dotenv()
     config = load_config()
 
-    if not config.llm.api_key:
-        raise ValueError(f"API key not set for {config.llm.model}")
-
-    provider: BaseLLMProvider = OpenRouterProvider(
-        model="nvidia/nemotron-3-ultra-550b-a55b:free",
-        base_url="https://openrouter.ai/api",
-        api_key=os.getenv(config.llm.api_key, ""),
-    )
-
-    # provider = OllamaProvider(model=config.llm.model, base_url=config.llm.base_url)
+    provider = create_provider(config.llm)
     session = Session()
     registry = ToolRegistry(provider=provider, session=session, config=config)
     mcp_registry: MCPRegistry | None = None
@@ -110,7 +100,7 @@ async def build_system_prompt(config: AppConfig) -> str:
 async def compact(
     agent: Agent,
     compaction_strategy: CompactionStrategy,
-    provider: BaseLLMProvider,
+    provider: Any,
 ):
     compacted = await run_compaction(
         strategy=compaction_strategy,

@@ -178,9 +178,6 @@ class Agent(BaseModel):
         return await self._loop()
 
     async def _loop(self) -> str:
-        runner = ToolRunner()
-        tools_by_name = {tool.name: tool for tool in self.tools}
-
         for _ in range(self.max_iterations):
             async with thinking_spinner():
                 response = await self.provider.chat(self.messages, tools=self.tools)
@@ -201,12 +198,12 @@ class Agent(BaseModel):
                     call: ToolCall,
                 ) -> Tuple[str, ToolResult] | None:
                     display_tool_call(self.name, call.name, call.args)
-                    tool = tools_by_name.get(call.name)
+                    tool = self.tools_by_name.get(call.name)
 
                     if not tool:
                         return
 
-                    result = await runner.run(
+                    result = await self.runner.run(
                         tool, call.args, self.config.tools.confirm_execution
                     )
                     display_tool_result(self.name, result.data)

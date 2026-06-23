@@ -144,6 +144,8 @@ class OpenRouterProvider(BaseLLMProvider):
             "Content-Type": "application/json",
         }
 
+        tool_call_deltas: dict[int, dict[str, Any]] = {}
+
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream(
                 "POST",
@@ -182,22 +184,37 @@ class OpenRouterProvider(BaseLLMProvider):
                     content = delta.get("content")
                     finish_reason = choices[0].get("finish_reason")
 
-                    tool_calls: List[ToolCall] = []
                     for call in delta.get("tool_calls", []):
-                        tool_calls.append(
-                            ToolCall(
-                                id=call.get("id", ""),
-                                name=call.get("function", {}).get("name", ""),
-                                args=call.get("function", {}).get("arguments", ""),
-                            )
-                        )
+                        idx = call["index"]
+                        if idx not in tool_call_deltas:
+                            tool_call_deltas[idx] = {"id": "", "name": "", "arguments": ""}
+                        tc = tool_call_deltas[idx]
+                        if call.get("id"):
+                            tc["id"] = call["id"]
+                        if call.get("function"):
+                            if call["function"].get("name"):
+                                tc["name"] = call["function"]["name"]
+                            if call["function"].get("arguments"):
+                                tc["arguments"] += call["function"]["arguments"]
 
                     done = finish_reason is not None
-                    yield StreamLLMChatResponse(
-                        done=done,
-                        content=content,
-                        tool_calls=tool_calls,
-                    )
 
-                    if done:
+                    if done and tool_call_deltas:
+                        tool_calls: List[ToolCall] = []
+                        for idx in sorted(tool_call_deltas):
+                            tc = tool_call_deltas[idx]
+                            tool_calls.append(
+                                ToolCall(
+                                    id=tc["id"],
+                                    name=tc["name"],
+                                    args=json.loads(tc["arguments"]),
+                                )
+                            )
+                        yield StreamLLMChatResponse(
+                            done=True, content=content, tool_calls=tool_calls
+                        )
                         break
+                    else:
+                        yield StreamLLMChatResponse(
+                            done=False, content=content, tool_calls=[]
+                        )

@@ -34,8 +34,8 @@ async def main():
         raise ValueError(f"API key not set for {config.llm.model}")
 
     provider: BaseLLMProvider = OpenRouterProvider(
-        model="free",
-        base_url="https://openrouter.ai/api/v1/chat/completions",
+        model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        base_url="https://openrouter.ai/api",
         api_key=os.getenv(config.llm.api_key, ""),
     )
 

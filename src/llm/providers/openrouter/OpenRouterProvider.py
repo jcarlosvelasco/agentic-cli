@@ -48,18 +48,19 @@ class OpenRouterProvider(BaseLLMProvider):
         return result
 
     def get_openrouter_schema(self, tool: Tool) -> dict[str, Any]:
-        schema = {
-            "type": "function",
-            "name": tool.name,
-            "description": tool.description,
-            "parameters": {},
-        }
+        parameters = {}
 
         if tool.args_schema:
-            json_schema = tool.args_schema.model_json_schema()
-            schema["parameters"] = json_schema
+            parameters = tool.args_schema.model_json_schema()
 
-        return schema
+        return {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": parameters,
+            },
+        }
 
     async def chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
@@ -71,10 +72,15 @@ class OpenRouterProvider(BaseLLMProvider):
             "temperature": temperature,
             "tools": [self.get_openrouter_schema(tool) for tool in tools],
         }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(
-                    f"{self.base_url}/chat",
+                    f"{self.base_url}/v1/chat/completions",
+                    headers=headers,
                     json=payload,
                 )
 
@@ -104,7 +110,12 @@ class OpenRouterProvider(BaseLLMProvider):
                 response.status_code,
             )
 
-        message = data["message"]
+        choices = data.get("choices", [])
+        if not choices:
+            raise ChatResponseError("No choices in response", response.status_code)
+
+        message = choices[0].get("message", {})
+        content = message.get("content")
 
         tool_calls: List[ToolCall] = []
         for call in message.get("tool_calls", []):
@@ -116,9 +127,7 @@ class OpenRouterProvider(BaseLLMProvider):
                 )
             )
 
-        return LLMChatResponse(
-            content=data["message"]["content"], tool_calls=tool_calls
-        )
+        return LLMChatResponse(content=content, tool_calls=tool_calls)
 
     async def stream_chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
@@ -130,25 +139,34 @@ class OpenRouterProvider(BaseLLMProvider):
             "temperature": temperature,
             "tools": [self.get_openrouter_schema(tool) for tool in tools],
         }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream(
-                "POST", f"{self.base_url}/chat", json=payload
+                "POST",
+                f"{self.base_url}/v1/chat/completions",
+                headers=headers,
+                json=payload,
             ) as response:
                 async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+
+                    payload_line = line.removeprefix("data: ")
+
+                    if payload_line.strip() == "[DONE]":
+                        break
+
                     try:
-                        data = json.loads(line)
+                        data = json.loads(payload_line)
                     except Exception as e:
                         raise ChatResponseError(
                             "Invalid JSON response",
                             response.status_code,
                         ) from e
-
-                    if response.status_code != 200:
-                        raise ChatResponseError(
-                            data.get("error", "Unknown error"),
-                            response.status_code,
-                        )
 
                     if "error" in data:
                         raise ChatResponseError(
@@ -156,28 +174,30 @@ class OpenRouterProvider(BaseLLMProvider):
                             response.status_code,
                         )
 
-                    message = data["message"]
+                    choices = data.get("choices", [])
+                    if not choices:
+                        continue
+
+                    delta = choices[0].get("delta", {})
+                    content = delta.get("content")
+                    finish_reason = choices[0].get("finish_reason")
 
                     tool_calls: List[ToolCall] = []
-                    for call in message.get("tool_calls", []):
+                    for call in delta.get("tool_calls", []):
                         tool_calls.append(
                             ToolCall(
-                                id=call["id"],
-                                name=call["function"]["name"],
-                                args=call["function"]["arguments"],
+                                id=call.get("id", ""),
+                                name=call.get("function", {}).get("name", ""),
+                                args=call.get("function", {}).get("arguments", ""),
                             )
                         )
 
-                    if message.get("done") == "true":
-                        yield StreamLLMChatResponse(
-                            done=True,
-                            content=message.get("content"),
-                            tool_calls=tool_calls,
-                        )
+                    done = finish_reason is not None
+                    yield StreamLLMChatResponse(
+                        done=done,
+                        content=content,
+                        tool_calls=tool_calls,
+                    )
+
+                    if done:
                         break
-                    else:
-                        yield StreamLLMChatResponse(
-                            done=False,
-                            content=message.get("content"),
-                            tool_calls=tool_calls,
-                        )

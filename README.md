@@ -6,7 +6,9 @@
 
 - Python >= 3.12
 - [uv](https://docs.astral.sh/uv/)
-- [Ollama](https://ollama.com/) running locally with the desired model (e.g. `gemma4:e2b-mlx`)
+- One of the supported LLM providers:
+  - [Ollama](https://ollama.com/) (optional) running locally with the desired model (e.g. `gemma4:e2b-mlx`)
+  - [OpenRouter](https://openrouter.ai/) (optional) with a valid API key
 - A [Tavily](https://tavily.com/) API key (free tier available) — used by the web search tool
 
 ## Installation
@@ -18,17 +20,38 @@ uv add --group dev -r requirements-dev.txt
 
 ## Configuration
 
-Copy the environment file and add your Tavily API key:
+Copy the environment file and add your API keys:
 
 ```bash
 cp .env.example .env
 ```
 
-Then edit `.env` and set your key:
+Then edit `.env` and set your keys:
 
 ```env
 TAVILY_API_KEY=tvly-your-key-here
+OPENROUTER_API_KEY=sk-or-your-key-here
 ```
+
+Provider, model and other settings are configured in `config.json` at the project root:
+
+```json
+{
+  "llm": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.5-fl-exp-03-25:free",
+    "base_url": "https://openrouter.ai/api",
+    "api_key": "OPENROUTER_API_KEY"
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `provider` | Provider name (`ollama` or `openrouter`) |
+| `model` | Model identifier for the chosen provider |
+| `base_url` | Base URL of the provider API |
+| `api_key` | Name of the environment variable that holds the API key (only needed for cloud providers) |
 
 ## Usage
 
@@ -70,9 +93,14 @@ src/
 │   └── UIConfig.py                      # UI settings (streaming, etc.)
 ├── llm/
 │   ├── interfaces/BaseLLMProvider.py    # Abstract base class for LLM providers
-│   ├── providers/ollama/                # Ollama implementation
-│   │   ├── OllamaProvider.py
-│   │   └── OllamaMessage.py
+│   ├── providers/                       # Each provider is a self-contained package
+│   │   ├── __init__.py                  # Factory: create_provider(config)
+│   │   ├── ollama/                      # Ollama implementation
+│   │   │   ├── OllamaProvider.py
+│   │   │   └── OllamaMessage.py
+│   │   └── openrouter/                  # OpenRouter implementation
+│   │       ├── OpenRouterProvider.py
+│   │       └── OpenRouterMessage.py
 │   └── schema/                          # Data models
 │       ├── Message.py
 │       ├── ToolCall.py
@@ -120,7 +148,20 @@ The active strategy is configured in `src/shared/main.py:33` by changing the `Co
 
 ## Adding a LLM provider
 
-To add a new provider, you need to implement the `LLMProvider` interface in `src/llm/providers/`. This means implementing how to send a request to the LLM and how the provider formats the messages.
+Adding a new provider is plug and play — no core code needs to be modified beyond the provider package itself.
+
+1. **Create a package** under `src/llm/providers/<name>/` with at least two files:
+   - `XProvider.py` — a class that inherits from `BaseLLMProvider` and implements:
+     - `format_messages(messages)` — converts internal `Message` objects to the provider's native format
+     - `chat(messages, tools, temperature)` — sends a non-streaming request
+     - `stream_chat(messages, tools, temperature)` — sends a streaming request, yielding `StreamLLMChatResponse`
+   - `XMessage.py` — TypedDict(s) describing the provider's message format
+
+2. **Register the provider** in `src/llm/providers/__init__.py` by importing it and adding a new `if config.provider == "<name>"` branch in the `create_provider()` factory function.
+
+3. **Configure it** via `config.json` — set `"provider"` to the new name, along with any needed `model`, `base_url`, and optionally `api_key` (the name of an env var).
+
+That's it. The provider is automatically wired into the agent loop, tool system, memory, and compaction pipeline.
 
 ## Adding a tool
 

@@ -4,18 +4,17 @@ from os import path
 
 from dotenv import load_dotenv
 
-from compaction.CompactionRunner import run_compaction
-from compaction.CompactionStrategy import CompactionStrategy
-from config.AppConfig import AppConfig
-from llm.interfaces.BaseLLMProvider import BaseLLMProvider
-from llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
-from memory.preamble import preamble
-from shared.config import load_config
 from src.agent.schema.Agent import Agent
-from src.llm.providers.ollama.OllamaProvider import OllamaProvider
+from src.compaction.CompactionRunner import run_compaction
+from src.compaction.CompactionStrategy import CompactionStrategy
+from src.config.AppConfig import AppConfig
+from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
+from src.llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
 from src.mcp.mcp_registry import MCPRegistry
 from src.memory.interface.Session import Session
+from src.memory.preamble import preamble
 from src.memory.summarize import summarize
+from src.shared.config import load_config
 from src.shared.console import (
     display_assistant_message,
     display_compacting,

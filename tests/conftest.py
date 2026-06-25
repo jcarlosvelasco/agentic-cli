@@ -5,6 +5,8 @@ from typing import Any, AsyncIterator, List
 
 import pytest
 
+from config.CompactionConfig import CompactionConfig
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -89,3 +91,8 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def config() -> CompactionConfig:
+    return CompactionConfig()

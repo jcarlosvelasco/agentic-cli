@@ -59,7 +59,7 @@ async def main():
     try:
         while True:
             if config.compaction.enabled:
-                await compact(agent, config.compaction.strategy, provider)
+                await compact(agent, config.compaction.strategy, provider, config)
 
             user_input = await get_user_input()
 
@@ -101,11 +101,13 @@ async def compact(
     agent: Agent,
     compaction_strategy: CompactionStrategy,
     provider: Any,
+    config: AppConfig,
 ):
     compacted = await run_compaction(
         strategy=compaction_strategy,
         messages=agent.messages,
         provider=provider,
+        config=config.compaction,
     )
     if len(compacted) < len(agent.messages):
         display_compacting(len(agent.messages) - len(compacted))

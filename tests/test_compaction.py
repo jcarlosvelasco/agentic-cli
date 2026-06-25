@@ -1,3 +1,4 @@
+from config.CompactionConfig import CompactionConfig
 from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.compaction.strategies.SlidingWindow import SlidingWindow
@@ -177,27 +178,29 @@ class TestSummarization:
 
 
 class TestCompactionRunner:
-    async def test_sliding_window_strategy(self, sample_messages, mock_provider):
+    async def test_sliding_window_strategy(
+        self, sample_messages, mock_provider, config: CompactionConfig
+    ):
         result = await run_compaction(
-            CompactionStrategy.SLIDING_WINDOW, sample_messages, mock_provider
+            CompactionStrategy.SLIDING_WINDOW, sample_messages, mock_provider, config
         )
         assert len(result) == len(sample_messages)
 
     async def test_none_strategy_returns_unchanged(
-        self, sample_messages, mock_provider
+        self, sample_messages, mock_provider, config: CompactionConfig
     ):
         result = await run_compaction(
-            CompactionStrategy.NONE, sample_messages, mock_provider
+            CompactionStrategy.NONE, sample_messages, mock_provider, config
         )
         assert result == sample_messages
 
-    async def test_summarization_strategy(self):
+    async def test_summarization_strategy(self, config: CompactionConfig):
         provider = MockProvider(chat_responses=[LLMChatResponse(content="Summary.")])
 
         messages = [
             Message(role=MessageRole.USER, content=f"msg{i}") for i in range(25)
         ]
         result = await run_compaction(
-            CompactionStrategy.SUMMARIZATION, messages, provider
+            CompactionStrategy.SUMMARIZATION, messages, provider, config
         )
         assert len(result) < len(messages)

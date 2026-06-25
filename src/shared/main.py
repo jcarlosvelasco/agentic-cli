@@ -9,7 +9,7 @@ from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.config.AppConfig import AppConfig
 from src.llm.providers import create_provider
-from src.mcp.mcp_registry import MCPRegistry
+from src.mcp_integration.mcp_registry import MCPRegistry
 from src.memory.Session import Session
 from src.memory.preamble import preamble
 from src.memory.summarize import summarize

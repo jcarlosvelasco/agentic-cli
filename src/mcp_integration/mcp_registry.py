@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import List
 
-from src.mcp.client import MCPClient
-from src.mcp.mcp_config import MCPServerConfig, load_mcp_config
+from src.mcp_integration.client import MCPClient
+from src.mcp_integration.mcp_config import MCPServerConfig, load_mcp_config
 from src.tools.interfaces.Tool import Tool
 
 

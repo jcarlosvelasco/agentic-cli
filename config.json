@@ -1,5 +1,5 @@
 {
-  "mode": "api",
+  "mode": "cli",
   "llm": {
     "provider": "ollama",
     "model": "gemma4:e2b-mlx",

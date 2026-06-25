@@ -37,26 +37,47 @@ Provider, model and other settings are configured in `config.json` at the projec
 
 ```json
 {
+  "mode": "cli",
   "llm": {
     "provider": "openrouter",
     "model": "google/gemini-2.5-fl-exp-03-25:free",
     "base_url": "https://openrouter.ai/api",
-    "api_key": "OPENROUTER_API_KEY"
+    "api_key": "OPENROUTER_API_KEY",
+    "retry_max_attempts": 3,
+    "retry_base_delay": 1.0
+  },
+  "compaction": {
+    "enabled": true,
+    "strategy": "SLIDING_WINDOW",
+    "sliding_window_size": 20,
+    "summarization_threshold": 20,
+    "summarization_keep": 6
   }
 }
 ```
 
 | Field | Description |
 |---|---|
-| `provider` | Provider name (`ollama` or `openrouter`) |
-| `model` | Model identifier for the chosen provider |
-| `base_url` | Base URL of the provider API |
-| `api_key` | Name of the environment variable that holds the API key (only needed for cloud providers) |
+| `mode` | `"cli"` (default) or `"api"` |
+| `llm.provider` | Provider name (`ollama` or `openrouter`) |
+| `llm.model` | Model identifier for the chosen provider |
+| `llm.base_url` | Base URL of the provider API |
+| `llm.api_key` | Name of the environment variable that holds the API key (only needed for cloud providers) |
+| `llm.retry_max_attempts` | Max retries on provider errors (timeout, 5xx) |
+| `llm.retry_base_delay` | Base delay in seconds for exponential backoff |
+| `compaction.strategy` | `NONE`, `SLIDING_WINDOW`, or `SUMMARIZATION` |
+| `compaction.sliding_window_size` | Messages kept when using `SLIDING_WINDOW` |
+| `compaction.summarization_threshold` | Messages before summarization kicks in |
+| `compaction.summarization_keep` | Messages kept verbatim after summarization |
 
 ## Usage
 
+The framework supports two modes:
+
+### CLI mode (default)
+
 ```bash
-uv run python -m src.shared.main
+uv run python -m src
 ```
 
 Example session:
@@ -72,56 +93,105 @@ Execute? (y/n): y
 
 Each time the agent decides to run a tool, it asks for confirmation before executing.
 
+### API mode
+
+Start the FastAPI server:
+
+```bash
+uv run python -m src api
+```
+
+Or set `"mode": "api"` in `config.json` and run:
+
+```bash
+uv run python -m src
+```
+
+Endpoints:
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `POST` | `/chat` | Non-streaming chat — returns `{"result": "..."}` |
+| `POST` | `/chat/stream` | Server-Sent Events (SSE) streaming chat |
+
+Testing with curl:
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Hello!"}'
+
+curl -N -X POST http://localhost:8000/chat/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Hello!"}'
+```
+
 ## Architecture
 
 ```
 src/
+├── __init__.py
+├── __main__.py                        # Unified entry point — dispatches CLI/API mode
+├── agent/
+│   ├── Agent.py                       # Core agent loop and streaming loop
+│   └── prompts.py                     # System prompt templates
+├── api/
+│   ├── api.py                         # FastAPI app with /chat and /chat/stream
+│   └── schema/
+│       └── ChatBody.py                # Request model: query + optional session_id
 ├── compaction/
-│   ├── Compaction.py                    # Abstract base class for compaction strategies
-│   ├── CompactionStrategy.py            # Enum: NONE, SLIDING_WINDOW, SUMMARIZATION
-│   ├── CompactionRunner.py              # Dispatcher that selects and runs the strategy
+│   ├── Compaction.py                  # Abstract base class for compaction strategies
+│   ├── CompactionStrategy.py          # Enum: NONE, SLIDING_WINDOW, SUMMARIZATION
+│   ├── CompactionRunner.py            # Dispatcher that selects and runs the strategy
 │   └── strategies/
-│       ├── SlidingWindow.py             # Keeps the last N messages
-│       └── Summarization.py             # Summarizes older messages via the LLM
+│       ├── SlidingWindow.py           # Keeps the last N messages
+│       └── Summarization.py           # Summarizes older messages via the LLM
 ├── config/
-│   ├── AppConfig.py                     # Global application configuration model
-│   ├── CompactionConfig.py              # Compaction-specific settings
-│   ├── LLMConfig.py                     # LLM provider settings
-│   ├── MCPConfig.py                     # MCP server configuration
-│   ├── MemoryConfig.py                  # Memory settings
-│   ├── ToolsConfig.py                   # Tool-specific configuration
-│   └── UIConfig.py                      # UI settings (streaming, etc.)
+│   ├── AppConfig.py                   # Global application configuration model
+│   ├── CompactionConfig.py            # Compaction-specific settings
+│   ├── LLMConfig.py                   # LLM provider settings
+│   ├── MCPConfig.py                   # MCP server configuration
+│   ├── MemoryConfig.py                # Memory settings
+│   ├── ToolsConfig.py                 # Tool-specific configuration
+│   └── UIConfig.py                    # UI settings (streaming, etc.)
 ├── llm/
-│   ├── interfaces/BaseLLMProvider.py    # Abstract base class for LLM providers
-│   ├── providers/                       # Each provider is a self-contained package
-│   │   ├── __init__.py                  # Factory: create_provider(config)
-│   │   ├── ollama/                      # Ollama implementation
+│   ├── interfaces/BaseLLMProvider.py  # Abstract base class for LLM providers
+│   ├── providers/                     # Each provider is a self-contained package
+│   │   ├── __init__.py                # Factory: create_provider(config)
+│   │   ├── ollama/                    # Ollama implementation
 │   │   │   ├── OllamaProvider.py
 │   │   │   └── OllamaMessage.py
-│   │   └── openrouter/                  # OpenRouter implementation
+│   │   └── openrouter/                # OpenRouter implementation
 │   │       ├── OpenRouterProvider.py
 │   │       └── OpenRouterMessage.py
-│   └── schema/                          # Data models
-│       ├── Message.py
-│       ├── ToolCall.py
-│       ├── LLMChatResponse.py
-│       └── Chat*Error.py
+│   ├── schema/                        # Data models
+│   │   ├── Message.py
+│   │   ├── ToolCall.py
+│   │   ├── LLMChatResponse.py
+│   │   └── Chat*Error.py
+│   └── utils.py                       # retry_with_backoff helper
+├── mcp_integration/
+│   ├── mcp_registry.py                # MCP server discovery and tool loading
+│   └── mcp.json                       # MCP server configuration
 ├── memory/
-│   ├── Session.py                        # Session data model
-│   ├── SessionIndex.py                   # Session index manager
-│   ├── preamble.py                       # Session preamble generation
-│   ├── summarize.py                      # Session summarization logic
-│   └── utils.py                          # Memory utilities
+│   ├── Session.py                     # Session data model
+│   ├── SessionIndex.py                # Session index manager
+│   ├── preamble.py                    # Session preamble generation
+│   ├── summarize.py                   # Session summarization logic
+│   └── utils.py                       # Memory utilities
 ├── tools/
-│   ├── interfaces/Tool.py               # Abstract Tool + ToolResult
-│   ├── registry.py                      # Central tool registry
-│   ├── ToolRunner.py                    # Interactive executor with confirmation
+│   ├── interfaces/Tool.py             # Abstract Tool + ToolResult
+│   ├── registry.py                    # Central tool registry
+│   ├── ToolRunner.py                  # Interactive executor with confirmation
 │   └── tools/
-│ 
+│
 ├── shared/
-│   ├── main.py                          # Entry point (agent loop)
-│   └── config.py                        # YAML/JSON config loader
-└── config.json                          # User-facing configuration file
+│   ├── config.py                      # JSON config loader
+│   ├── console.py                     # Rich console helpers
+│   ├── main.py                        # CLI entry point (agent loop)
+│   └── utils.py                       # system_prompt builder, compaction dispatch
+└── config.json                        # User-facing configuration file
 ```
 
 ### Flow
@@ -142,7 +212,7 @@ Compaction controls how the conversation history is reduced before each LLM call
 | `SLIDING_WINDOW` | Keeps only the most recent 20 non-system messages; discards older ones. |
 | `SUMMARIZATION` | Once the conversation exceeds 20 messages, summarizes older messages via the LLM and keeps the last 6 messages verbatim. |
 
-The active strategy is configured in `src/shared/main.py:33` by changing the `CompactionStrategy` enum value. Parameters (window size, threshold, keep count) are set in `src/compaction/CompactionRunner.py`.
+The active strategy and its parameters are configured in `config.json` under the `compaction` key.
 
 ## Adding a LLM provider
 
@@ -183,6 +253,7 @@ uv run ruff check
 ## Future work
 - Skills
 - Token count
+- `POST /sessions`, `GET /sessions`, `GET /sessions/{id}`, `GET /tools` endpoints
 
 ## License
 

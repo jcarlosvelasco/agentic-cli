@@ -8,8 +8,10 @@ from pydantic.config import ConfigDict
 from config.AppConfig import AppConfig
 from shared.config import load_config
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
+from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
+from src.llm.utils import retry_with_backoff
 from src.memory.Session import Session
 from src.shared.console import (
     LiveController,
@@ -17,6 +19,7 @@ from src.shared.console import (
     display_assistant_message,
     display_tool_call,
     display_tool_result,
+    display_warning,
     streaming_panel,
     thinking_spinner,
 )
@@ -49,43 +52,55 @@ class Agent(BaseModel):
         self.append(Message(role=MessageRole.USER, content=task))
         return await self._stream_loop()
 
+    async def _consume_stream_once(
+        self,
+        on_content: Callable[[str], None] | None = None,
+    ) -> tuple[str, list[ToolCall]]:
+        stream = self.provider.stream_chat(self.messages, tools=self.tools)
+        content = ""
+        calls: list[ToolCall] = []
+
+        if on_content:
+            async for chunk in stream:
+                if chunk.content:
+                    content += chunk.content
+                    on_content(content)
+                if chunk.tool_calls:
+                    calls = chunk.tool_calls
+                if chunk.done:
+                    break
+        else:
+            async with streaming_panel(self.name) as (update, ctrl):
+                async for chunk in stream:
+                    if chunk.content:
+                        content += chunk.content
+                        update(content)
+                    if chunk.tool_calls:
+                        calls = chunk.tool_calls
+                    if chunk.done:
+                        break
+
+        return content, calls
+
     async def _stream_loop(
         self,
         on_content: Callable[[str], None] | None = None,
         ui_control: LiveController | None = None,
     ) -> str:
         for _ in range(self.max_iterations):
-            stream = self.provider.stream_chat(
-                self.messages,
-                tools=self.tools,
-            )
-
-            full_content = ""
-            last_tool_calls: List[ToolCall] = []
-
-            if on_content:
-                async for chunk in stream:
-                    if chunk.content:
-                        full_content += chunk.content
-                        on_content(full_content)
-
-                    if chunk.tool_calls:
-                        last_tool_calls = chunk.tool_calls
-
-                    if chunk.done:
-                        break
-            else:
-                async with streaming_panel(self.name) as (update, ctrl):
-                    async for chunk in stream:
-                        if chunk.content:
-                            full_content += chunk.content
-                            update(full_content)
-
-                        if chunk.tool_calls:
-                            last_tool_calls = chunk.tool_calls
-
-                        if chunk.done:
-                            break
+            try:
+                full_content, last_tool_calls = await retry_with_backoff(
+                    lambda: self._consume_stream_once(on_content),
+                    max_retries=self.config.llm.retry_max_attempts,
+                    base_delay=self.config.llm.retry_base_delay,
+                )
+            except ChatResponseError as e:
+                msg = f"LLM request failed after retries: {e.message}"
+                if on_content:
+                    on_content(f"\n⚠️ {msg}")
+                else:
+                    display_warning(msg)
+                return msg
 
             if last_tool_calls:
                 self.append(
@@ -180,7 +195,11 @@ class Agent(BaseModel):
     async def _loop(self) -> str:
         for _ in range(self.max_iterations):
             async with thinking_spinner():
-                response = await self.provider.chat(self.messages, tools=self.tools)
+                response = await retry_with_backoff(
+                    lambda: self.provider.chat(self.messages, tools=self.tools),
+                    max_retries=self.config.llm.retry_max_attempts,
+                    base_delay=self.config.llm.retry_base_delay,
+                )
 
             if response.has_tool_calls:
                 if response.content:

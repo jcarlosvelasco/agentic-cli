@@ -4,8 +4,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from src.llm.schema.Message import Message, MessageRole
-from src.memory.interface.Session import Session
-from src.memory.interface.SessionIndex import SessionIndex
+from src.memory.Session import Session
+from src.memory.SessionIndex import SessionIndex
 from src.memory.preamble import preamble
 
 
@@ -47,8 +47,8 @@ class TestSession:
         assert len(restored.messages) == 1
         assert restored.messages[0].content == "test"
 
-    @patch("src.memory.interface.Session.get_session_folder_path")
-    @patch("src.memory.interface.Session.Path")
+    @patch("src.memory.Session.get_session_folder_path")
+    @patch("src.memory.Session.Path")
     def test_save_creates_directory_and_file(self, mock_path_class, mock_get_folder):
         mock_path = MagicMock()
         mock_path_class.return_value = mock_path
@@ -69,7 +69,7 @@ class TestSession:
 
 
 class TestSessionIndex:
-    @patch("src.memory.interface.SessionIndex.get_session_index_file_path")
+    @patch("src.memory.SessionIndex.get_session_index_file_path")
     def test_create_writes_empty_list(self, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
@@ -80,7 +80,7 @@ class TestSessionIndex:
             with open(index_path) as f:
                 assert json.load(f) == []
 
-    @patch("src.memory.interface.SessionIndex.get_session_index_file_path")
+    @patch("src.memory.SessionIndex.get_session_index_file_path")
     def test_create_does_not_overwrite_existing(self, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
@@ -92,8 +92,8 @@ class TestSessionIndex:
                 data = json.load(f)
             assert data == [{"existing": True}]
 
-    @patch("src.memory.interface.SessionIndex.get_session_index_file_path")
-    @patch("src.memory.interface.SessionIndex.get_session_folder_path")
+    @patch("src.memory.SessionIndex.get_session_index_file_path")
+    @patch("src.memory.SessionIndex.get_session_folder_path")
     def test_update_adds_new_entry(self, mock_get_folder, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
@@ -108,8 +108,8 @@ class TestSessionIndex:
             assert entries[0]["summary"] == "Test summary"
             assert entries[0]["tags"] == ["tag1"]
 
-    @patch("src.memory.interface.SessionIndex.get_session_index_file_path")
-    @patch("src.memory.interface.SessionIndex.get_session_folder_path")
+    @patch("src.memory.SessionIndex.get_session_index_file_path")
+    @patch("src.memory.SessionIndex.get_session_folder_path")
     def test_update_updates_existing_entry(self, mock_get_folder, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
@@ -135,14 +135,14 @@ class TestSessionIndex:
             assert entries[0]["summary"] == "new summary"
             assert entries[0]["tags"] == ["updated"]
 
-    @patch("src.memory.interface.SessionIndex.get_session_index_file_path")
+    @patch("src.memory.SessionIndex.get_session_index_file_path")
     def test_update_creates_index_if_not_exists(self, mock_get_path):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "session_index.json"
             mock_get_path.return_value = str(index_path)
 
             with patch(
-                "src.memory.interface.SessionIndex.get_session_folder_path"
+                "src.memory.SessionIndex.get_session_folder_path"
             ) as mock_get_folder:
                 mock_get_folder.return_value = str(tmpdir)
                 SessionIndex.update("s1", "summary", [])

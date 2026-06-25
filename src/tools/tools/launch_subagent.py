@@ -4,7 +4,7 @@ from pydantic import Field
 from pydantic.main import BaseModel
 
 from config.AppConfig import AppConfig
-from memory.interface.Session import Session
+from memory.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool, ToolResult
 
@@ -51,7 +51,7 @@ class LaunchSubagentTool(Tool[LaunchSubagentArgs]):
         self._config = config
 
     async def execute(self, args: LaunchSubagentArgs | None) -> ToolResult:
-        from src.agent.schema.Agent import Agent
+        from src.agent.Agent import Agent
         from src.tools.registry import ToolRegistry
 
         if not args:

@@ -4,13 +4,13 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from src.agent.schema.Agent import Agent
+from src.agent.Agent import Agent
 from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.config.AppConfig import AppConfig
 from src.llm.providers import create_provider
 from src.mcp.mcp_registry import MCPRegistry
-from src.memory.interface.Session import Session
+from src.memory.Session import Session
 from src.memory.preamble import preamble
 from src.memory.summarize import summarize
 from src.shared.config import load_config

@@ -2,8 +2,8 @@ from pathlib import Path
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
-from src.memory.interface.Session import Session
-from src.memory.interface.SessionIndex import SessionIndex
+from src.memory.Session import Session
+from src.memory.SessionIndex import SessionIndex
 from src.memory.utils import get_session_folder_path
 
 

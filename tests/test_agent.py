@@ -3,12 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from config.AppConfig import AppConfig
-from src.agent.schema.Agent import Agent
+from src.agent.Agent import Agent
 from src.llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse
 from src.llm.schema.LLMChatResponse import LLMChatResponse
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
-from src.memory.interface.Session import Session
+from src.memory.Session import Session
 from src.tools.interfaces.Tool import Tool, ToolResult
 from tests.conftest import MockTool
 
@@ -79,9 +79,9 @@ def _make_stream_tool_then_text(tool_chunks, text_chunks):
 
 
 class TestAgentStreamLoop:
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_text_response_returns_content(
         self,
         mock_display_result,
@@ -121,9 +121,9 @@ class TestAgentStreamLoop:
         assert agent.messages[0].role == MessageRole.ASSISTANT
         assert agent.messages[0].content == "Hello World"
 
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_tool_call_triggers_execution(
         self,
         mock_display_result,
@@ -166,9 +166,9 @@ class TestAgentStreamLoop:
             mock_tool, tool_call.args, should_confirm=False
         )
 
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_multiple_tool_calls_executed_concurrently(
         self,
         mock_display_result,
@@ -212,9 +212,9 @@ class TestAgentStreamLoop:
         assert result == "done"
         assert agent.runner.run.await_count == 2
 
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_unknown_tool_skipped_gracefully(
         self,
         mock_display_result,
@@ -251,9 +251,9 @@ class TestAgentStreamLoop:
         tool_msgs = [m for m in agent.messages if m.role == MessageRole.TOOL]
         assert len(tool_msgs) == 0
 
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_max_iterations_reached(
         self,
         mock_display_result,
@@ -294,10 +294,10 @@ class TestAgentStreamLoop:
         result = await agent._stream_loop()
         assert result == "Max iterations reached"
 
-    @patch("src.agent.schema.Agent.streaming_panel")
-    @patch("src.agent.schema.Agent.confirm_execution")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.streaming_panel")
+    @patch("src.agent.Agent.confirm_execution")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_confirmation_pauses_and_resumes(
         self,
         mock_display_result,
@@ -342,7 +342,7 @@ class TestAgentStreamLoop:
         mock_ctrl.resume.assert_called_once()
         mock_confirm.assert_called_once()
 
-    @patch("src.agent.schema.Agent.streaming_panel")
+    @patch("src.agent.Agent.streaming_panel")
     async def test_stream_run_prepends_system_prompt(
         self, mock_streaming_panel, mock_provider, mock_tool, session
     ):
@@ -377,10 +377,10 @@ class TestAgentStreamLoop:
 
 
 class TestAgentLoop:
-    @patch("src.agent.schema.Agent.thinking_spinner")
-    @patch("src.agent.schema.Agent.display_assistant_message")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.thinking_spinner")
+    @patch("src.agent.Agent.display_assistant_message")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_loop_text_response(
         self,
         mock_display_result,
@@ -409,10 +409,10 @@ class TestAgentLoop:
         assert result == "Hello World"
         assert agent.messages[0].role == MessageRole.USER
 
-    @patch("src.agent.schema.Agent.thinking_spinner")
-    @patch("src.agent.schema.Agent.display_assistant_message")
-    @patch("src.agent.schema.Agent.display_tool_call")
-    @patch("src.agent.schema.Agent.display_tool_result")
+    @patch("src.agent.Agent.thinking_spinner")
+    @patch("src.agent.Agent.display_assistant_message")
+    @patch("src.agent.Agent.display_tool_call")
+    @patch("src.agent.Agent.display_tool_result")
     async def test_loop_tool_call_then_text(
         self,
         mock_display_result,

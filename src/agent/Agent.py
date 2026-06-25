@@ -10,7 +10,7 @@ from shared.config import load_config
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
-from src.memory.interface.Session import Session
+from src.memory.Session import Session
 from src.shared.console import (
     LiveController,
     confirm_execution,

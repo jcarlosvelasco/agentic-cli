@@ -94,7 +94,7 @@ class OpenRouterProvider(BaseLLMProvider):
             raise ChatTimeoutError("Request timeout") from e
 
         except httpx.ConnectError as e:
-            raise ChatConnectionError("Cannot connect to Ollama") from e
+            raise ChatConnectionError("Cannot connect to OpenRouter") from e
 
         try:
             data = response.json()

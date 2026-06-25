@@ -1,7 +1,7 @@
 from typing import List
 
-from config.AppConfig import AppConfig
-from memory.Session import Session
+from src.config.AppConfig import AppConfig
+from src.memory.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool
 from src.tools.tools.bash import BashTool

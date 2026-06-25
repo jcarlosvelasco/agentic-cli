@@ -1,4 +1,4 @@
-from config.CompactionConfig import CompactionConfig
+from src.config.CompactionConfig import CompactionConfig
 from src.compaction.CompactionRunner import run_compaction
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.compaction.strategies.SlidingWindow import SlidingWindow

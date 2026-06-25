@@ -5,3 +5,4 @@ rich
 tavily
 python-dotenv
 mcp
+fastapi[standard]

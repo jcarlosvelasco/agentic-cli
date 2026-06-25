@@ -5,10 +5,10 @@ from typing import Any, AsyncIterator, List
 
 import pytest
 
-from config.CompactionConfig import CompactionConfig
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.config.CompactionConfig import CompactionConfig
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse

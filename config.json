@@ -1,4 +1,5 @@
 {
+  "mode": "api",
   "llm": {
     "provider": "ollama",
     "model": "gemma4:e2b-mlx",
@@ -11,7 +12,7 @@
   },
   "mcp": {
     "enabled": false,
-    "config_file": "src/mcp/mcp.json"
+    "config_file": "src/mcp_integration/mcp.json"
   },
   "compaction": {
     "enabled": false,

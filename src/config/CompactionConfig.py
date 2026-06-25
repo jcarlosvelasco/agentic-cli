@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from compaction.CompactionStrategy import CompactionStrategy
+from src.compaction.CompactionStrategy import CompactionStrategy
 
 
 class CompactionConfig(BaseModel):

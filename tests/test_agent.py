@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from config.AppConfig import AppConfig
+from src.config.AppConfig import AppConfig
 from src.agent.Agent import Agent
 from src.llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse
 from src.llm.schema.LLMChatResponse import LLMChatResponse

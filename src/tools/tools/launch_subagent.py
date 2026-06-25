@@ -3,8 +3,8 @@ from typing import List, Optional
 from pydantic import Field
 from pydantic.main import BaseModel
 
-from config.AppConfig import AppConfig
-from memory.Session import Session
+from src.config.AppConfig import AppConfig
+from src.memory.Session import Session
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.tools.interfaces.Tool import Tool, ToolResult
 

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from config.AppConfig import AppConfig
+from src.config.AppConfig import AppConfig
 
 
 def load_config(path: str | Path = "config.json") -> AppConfig:

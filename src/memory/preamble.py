@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from config.AppConfig import AppConfig
-from memory.utils import get_session_index_file_path
+from src.config.AppConfig import AppConfig
+from src.memory.utils import get_session_index_file_path
 
 
 async def preamble(config: AppConfig) -> str:

@@ -1,15 +1,16 @@
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
-from config.CompactionConfig import CompactionConfig
-from config.LLMConfig import LLMConfig
-from config.MCPConfig import MCPConfig
-from config.MemoryConfig import MemoryConfig
-from config.ToolsConfig import ToolsConfig
-from config.UIConfig import UIConfig
+from src.config.CompactionConfig import CompactionConfig
+from src.config.LLMConfig import LLMConfig
+from src.config.MCPConfig import MCPConfig
+from src.config.MemoryConfig import MemoryConfig
+from src.config.ToolsConfig import ToolsConfig
+from src.config.UIConfig import UIConfig
 
 
 class AppConfig(BaseModel):
+    mode: str = "cli"
     llm: LLMConfig = Field(default_factory=LLMConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)

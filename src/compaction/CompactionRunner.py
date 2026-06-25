@@ -1,6 +1,6 @@
 from typing import List
 
-from config.CompactionConfig import CompactionConfig
+from src.config.CompactionConfig import CompactionConfig
 from src.compaction.CompactionStrategy import CompactionStrategy
 from src.compaction.strategies.SlidingWindow import SlidingWindow
 from src.compaction.strategies.Summarization import Summarization

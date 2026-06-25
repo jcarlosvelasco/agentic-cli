@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from memory.utils import get_session_folder_path
+from src.memory.utils import get_session_folder_path
 from src.llm.schema.Message import Message
 
 

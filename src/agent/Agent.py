@@ -5,8 +5,8 @@ from typing import Any, List, Tuple
 from pydantic import BaseModel, Field, computed_field
 from pydantic.config import ConfigDict
 
-from config.AppConfig import AppConfig
-from shared.config import load_config
+from src.config.AppConfig import AppConfig
+from src.shared.config import load_config
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.schema.ChatResponseError import ChatResponseError
 from src.llm.schema.Message import Message, MessageRole

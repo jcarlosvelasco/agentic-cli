@@ -1,4 +1,4 @@
-import subprocess
+import asyncio
 
 from pydantic import BaseModel, Field
 
@@ -16,10 +16,26 @@ class BashTool(Tool[BashToolArgs]):
         )
 
     async def execute(self, args: BashToolArgs | None) -> ToolResult:
-        if isinstance(args, BashToolArgs):
-            result = subprocess.run(
-                ["bash", "-c", args.command], capture_output=True, text=True
-            )
-            return ToolResult(success=True, data={"output": result.stdout})
+        if not isinstance(args, BashToolArgs):
+            return ToolResult(success=False, message="Invalid arguments")
 
-        return ToolResult(success=False, message="Invalid arguments")
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "bash", "-c", args.command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+
+            output = stdout.decode()
+            stderr_text = stderr.decode()
+            if stderr_text:
+                output += stderr_text
+
+            return ToolResult(
+                success=process.returncode == 0,
+                data={"output": output},
+                message=stderr_text if stderr_text else None,
+            )
+        except Exception as e:
+            return ToolResult(success=False, message=str(e))

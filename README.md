@@ -107,13 +107,11 @@ src/
 │       ├── LLMChatResponse.py
 │       └── Chat*Error.py
 ├── memory/
-│   ├── interface/
-│   │   ├── Session.py                   # Session data model
-│   │   └── SessionIndex.py              # Session index manager
-│   ├── preamble.py                      # Session preamble generation
-│   ├── summarize.py                     # Session summarization logic
-│   ├── update_session.py                # Session update on new interactions
-│   └── utils.py                         # Memory utilities
+│   ├── Session.py                        # Session data model
+│   ├── SessionIndex.py                   # Session index manager
+│   ├── preamble.py                       # Session preamble generation
+│   ├── summarize.py                      # Session summarization logic
+│   └── utils.py                          # Memory utilities
 ├── tools/
 │   ├── interfaces/Tool.py               # Abstract Tool + ToolResult
 │   ├── registry.py                      # Central tool registry

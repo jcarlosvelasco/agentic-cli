@@ -16,7 +16,9 @@ async def run_compaction(
 ) -> List[Message]:
     match strategy:
         case CompactionStrategy.SLIDING_WINDOW:
-            sliding_window_compaction = SlidingWindow(window_size=20)
+            sliding_window_compaction = SlidingWindow(
+                window_size=config.sliding_window_size
+            )
             messages = await sliding_window_compaction.compact(messages)
             return messages
         case CompactionStrategy.SUMMARIZATION:

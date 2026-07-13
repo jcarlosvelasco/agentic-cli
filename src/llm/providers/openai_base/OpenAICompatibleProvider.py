@@ -1,8 +1,11 @@
 import json
-from typing import Any, AsyncIterator, List
+from typing import Any, AsyncIterator, List, cast
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat.chat_completion_function_tool_param import (
+    ChatCompletionFunctionToolParam,
+)
 
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
 from src.llm.interfaces.StreamLLMChatResponse import StreamLLMChatResponse
@@ -48,10 +51,10 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
                 ]
             if message.tool_call_id:
                 msg["tool_call_id"] = message.tool_call_id
-            result.append(msg)
+            result.append(cast(ChatCompletionMessageParam, msg))
         return result
 
-    def get_openai_schema(self, tool: Tool) -> dict[str, Any]:
+    def get_openai_schema(self, tool: Tool) -> ChatCompletionFunctionToolParam:
         schema: dict[str, Any] = {
             "type": "function",
             "function": {
@@ -61,18 +64,21 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
         }
         if tool.args_schema:
             schema["function"]["parameters"] = tool.args_schema.model_json_schema()
-        return schema
+        return cast(ChatCompletionFunctionToolParam, schema)
 
     async def chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
     ) -> LLMChatResponse:
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": self.format_messages(messages),
+            "temperature": temperature,
+        }
+        tool_schemas = [self.get_openai_schema(t) for t in tools]
+        if tool_schemas:
+            kwargs["tools"] = tool_schemas
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=self.format_messages(messages),
-                tools=[self.get_openai_schema(t) for t in tools] or None,
-                temperature=temperature,
-            )
+            response = await self.client.chat.completions.create(**kwargs)
         except APITimeoutError as e:
             raise ChatTimeoutError("Request timeout") from e
         except APIConnectionError as e:
@@ -91,19 +97,22 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             for call in (message.tool_calls or [])
         ]
 
-        return LLMChatResponse(content=message.content, tool_calls=tool_calls)
+        return LLMChatResponse(content=message.content or "", tool_calls=tool_calls)
 
     async def stream_chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
     ) -> AsyncIterator[StreamLLMChatResponse]:
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": self.format_messages(messages),
+            "temperature": temperature,
+            "stream": True,
+        }
+        tool_schemas = [self.get_openai_schema(t) for t in tools]
+        if tool_schemas:
+            kwargs["tools"] = tool_schemas
         try:
-            stream = await self.client.chat.completions.create(
-                model=self.model,
-                messages=self.format_messages(messages),
-                tools=[self.get_openai_schema(t) for t in tools] or None,
-                temperature=temperature,
-                stream=True,
-            )
+            stream = await self.client.chat.completions.create(**kwargs)
         except APITimeoutError as e:
             raise ChatTimeoutError("Request timeout") from e
         except APIConnectionError as e:

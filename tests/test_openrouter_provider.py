@@ -1,8 +1,22 @@
 import json
+from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
+from openai import APIConnectionError, APIStatusError, APITimeoutError
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_chunk import (
+    Choice as ChunkChoice,
+    ChoiceDelta,
+    ChoiceDeltaToolCall,
+    ChoiceDeltaToolCallFunction,
+)
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
+from openai.types.chat.chat_completion_message_function_tool_call import (
+    ChatCompletionMessageFunctionToolCall,
+    Function,
+)
 
 from src.llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
 from src.llm.schema.ChatConnectionError import ChatConnectionError
@@ -12,12 +26,66 @@ from src.llm.schema.Message import Message, MessageRole
 from src.llm.schema.ToolCall import ToolCall
 
 
+async def _async_iter(items: list) -> AsyncIterator:
+    for item in items:
+        yield item
+
+
 @pytest.fixture
 def provider():
     return OpenRouterProvider(
         model="test-model",
-        base_url="https://openrouter.ai/api",
+        base_url="https://openrouter.ai/api/v1",
         api_key="sk-test-key",
+    )
+
+
+def _make_completion(content="Hello!", tool_calls=None):
+    return ChatCompletion(
+        id="chatcmpl-123",
+        choices=[
+            Choice(
+                finish_reason="stop",
+                index=0,
+                logprobs=None,
+                message=ChatCompletionMessage(
+                    content=content,
+                    role="assistant",
+                    tool_calls=tool_calls,
+                ),
+            )
+        ],
+        created=1234567890,
+        model="test-model",
+        object="chat.completion",
+    )
+
+
+def _make_tool_call(id: str, name: str, arguments: str):
+    return ChatCompletionMessageFunctionToolCall(
+        id=id,
+        function=Function(name=name, arguments=arguments),
+        type="function",
+    )
+
+
+def _make_chunk(content="Hello", finish_reason=None, tool_calls=None):
+    return ChatCompletionChunk(
+        id="chatcmpl-123",
+        choices=[
+            ChunkChoice(
+                delta=ChoiceDelta(
+                    content=content,
+                    tool_calls=tool_calls,
+                ),
+                finish_reason=finish_reason,
+                index=0,
+                logprobs=None,
+            )
+        ],
+        created=1234567890,
+        model="test-model",
+        object="chat.completion.chunk",
     )
 
 
@@ -27,13 +95,15 @@ class TestFormatMessages:
         result = provider.format_messages(msgs)
         assert result == [{"role": "user", "content": "hello"}]
 
-    def test_tool_call_sets_content_to_none(self, provider):
+    def test_tool_call_sets_content(self, provider):
         tc = ToolCall(id="c1", name="tool", args={"k": "v"})
         msgs = [Message(role=MessageRole.ASSISTANT, content="", tool_calls=[tc])]
         result = provider.format_messages(msgs)
-        assert result[0]["content"] is None
+        assert result[0]["content"] == ""
         assert len(result[0]["tool_calls"]) == 1
-        assert result[0]["tool_calls"][0]["function"]["arguments"] == '{"k": "v"}'
+        assert result[0]["tool_calls"][0]["function"]["arguments"] == json.dumps(
+            {"k": "v"}
+        )
 
     def test_tool_call_serializes_args_to_json_string(self, provider):
         tc = ToolCall(id="c1", name="tool", args={"nested": {"a": 1}})
@@ -48,31 +118,18 @@ class TestFormatMessages:
         assert result[0]["tool_call_id"] == "c1"
         assert result[0]["content"] == "result"
 
-    def test_empty_content_sets_none(self, provider):
+    def test_empty_content_keeps_string(self, provider):
         msgs = [Message(role=MessageRole.ASSISTANT, content="")]
         result = provider.format_messages(msgs)
-        assert result[0]["content"] is None
+        assert result[0]["content"] == ""
 
 
 class TestChat:
-    @patch("httpx.AsyncClient")
-    async def test_successful_response(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": "Hello!",
-                    }
-                }
-            ]
-        }
-        mock_client.post.return_value = mock_response
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_successful_response(self, mock_create, provider):
+        mock_create.return_value = AsyncMock(
+            return_value=_make_completion(content="Hello!")
+        )()
 
         result = await provider.chat(
             [Message(role=MessageRole.USER, content="hi")],
@@ -81,34 +138,16 @@ class TestChat:
         assert result.content == "Hello!"
         assert result.tool_calls == []
 
-    @patch("httpx.AsyncClient")
-    async def test_tool_call_with_json_args(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {
-                                    "name": "get_weather",
-                                    "arguments": '{"city": "London"}',
-                                },
-                            }
-                        ],
-                    }
-                }
-            ]
-        }
-        mock_client.post.return_value = mock_response
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_tool_call_with_json_args(self, mock_create, provider):
+        mock_create.return_value = AsyncMock(
+            return_value=_make_completion(
+                content=None,
+                tool_calls=[
+                    _make_tool_call("call_1", "get_weather", '{"city": "London"}')
+                ],
+            )
+        )()
 
         result = await provider.chat(
             [Message(role=MessageRole.USER, content="weather?")],
@@ -117,27 +156,11 @@ class TestChat:
         assert len(result.tool_calls) == 1
         assert result.tool_calls[0].args == {"city": "London"}
 
-    @patch("httpx.AsyncClient")
-    async def test_no_choices_raises_error(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": []}
-        mock_client.post.return_value = mock_response
-
-        with pytest.raises(ChatResponseError):
-            await provider.chat(
-                [Message(role=MessageRole.USER, content="hi")],
-                [],
-            )
-
-    @patch("httpx.AsyncClient")
-    async def test_timeout_raises_chat_timeout_error(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.post.side_effect = httpx.TimeoutException("timeout")
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_timeout_raises_chat_timeout_error(self, mock_create, provider):
+        mock_create.return_value = AsyncMock(
+            side_effect=APITimeoutError(request=MagicMock())
+        )()
 
         with pytest.raises(ChatTimeoutError):
             await provider.chat(
@@ -145,13 +168,13 @@ class TestChat:
                 [],
             )
 
-    @patch("httpx.AsyncClient")
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_connection_error_raises_chat_connection_error(
-        self, mock_client_class, provider
+        self, mock_create, provider
     ):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.post.side_effect = httpx.ConnectError("refused")
+        mock_create.return_value = AsyncMock(
+            side_effect=APIConnectionError(request=MagicMock())
+        )()
 
         with pytest.raises(ChatConnectionError):
             await provider.chat(
@@ -159,15 +182,19 @@ class TestChat:
                 [],
             )
 
-    @patch("httpx.AsyncClient")
-    async def test_non_200_status(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {"error": "unauthorized"}
-        mock_client.post.return_value = mock_response
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_non_200_status(self, mock_create, provider):
+        response = MagicMock()
+        response.status_code = 401
+        response.headers = {}
+        response.json.return_value = {"error": "unauthorized"}
+        mock_create.return_value = AsyncMock(
+            side_effect=APIStatusError(
+                message="unauthorized",
+                response=response,
+                body={"error": "unauthorized"},
+            )
+        )()
 
         with pytest.raises(ChatResponseError) as exc:
             await provider.chat(
@@ -176,65 +203,18 @@ class TestChat:
             )
         assert exc.value.status_code == 401
 
-    @patch("httpx.AsyncClient")
-    async def test_error_in_response_body(self, mock_client_class, provider):
-        mock_client = AsyncMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"error": "rate limited"}
-        mock_client.post.return_value = mock_response
-
-        with pytest.raises(ChatResponseError):
-            await provider.chat(
-                [Message(role=MessageRole.USER, content="hi")],
-                [],
-            )
-
 
 class TestStreamChat:
-    async def _async_iter(self, items):
-        for item in items:
-            yield item
-
-    def _build_mock_stream(self, lines: list[str]):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.aiter_lines = lambda: self._async_iter(lines)
-
-        mock_stream = MagicMock()
-        mock_stream.__aenter__.return_value = mock_response
-        return mock_stream
-
-    @patch("httpx.AsyncClient")
-    async def test_streaming_content_chunks(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {"delta": {"content": "Hello"}, "finish_reason": None}
-                        ]
-                    }
-                ),
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {"delta": {"content": " World"}, "finish_reason": None}
-                        ]
-                    }
-                ),
-                "data: "
-                + json.dumps(
-                    {"choices": [{"delta": {"content": ""}, "finish_reason": "stop"}]}
-                ),
-            ]
-        )
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_streaming_content_chunks(self, mock_create, provider):
+        chunks_list = [
+            _make_chunk(content="Hello", finish_reason=None),
+            _make_chunk(content=" World", finish_reason=None),
+            _make_chunk(content="", finish_reason="stop"),
+        ]
+        mock_create.return_value = AsyncMock(
+            return_value=_async_iter(chunks_list)
+        )()
 
         chunks = []
         async for chunk in provider.stream_chat(
@@ -250,93 +230,50 @@ class TestStreamChat:
         assert chunks[2].content == ""
         assert chunks[2].done is True
 
-    @patch("httpx.AsyncClient")
-    async def test_skips_non_data_lines(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                ": keep-alive",
-                "data: "
-                + json.dumps(
-                    {"choices": [{"delta": {"content": "Hi"}, "finish_reason": "stop"}]}
-                ),
-            ]
-        )
-
-        chunks = []
-        async for chunk in provider.stream_chat([], []):
-            chunks.append(chunk)
-
-        assert len(chunks) == 1
-        assert chunks[0].content == "Hi"
-
-    @patch("httpx.AsyncClient")
-    async def test_tool_call_delta_accumulation(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {
-                                "delta": {
-                                    "tool_calls": [
-                                        {
-                                            "index": 0,
-                                            "id": "call_1",
-                                            "function": {
-                                                "name": "get_weather",
-                                                "arguments": "",
-                                            },
-                                        }
-                                    ],
-                                },
-                                "finish_reason": None,
-                            }
-                        ]
-                    }
-                ),
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {
-                                "delta": {
-                                    "tool_calls": [
-                                        {
-                                            "index": 0,
-                                            "function": {"arguments": '{"city": '},
-                                        }
-                                    ],
-                                },
-                                "finish_reason": None,
-                            }
-                        ]
-                    }
-                ),
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {
-                                "delta": {
-                                    "tool_calls": [
-                                        {
-                                            "index": 0,
-                                            "function": {"arguments": '"London"}'},
-                                        }
-                                    ],
-                                },
-                                "finish_reason": "tool_calls",
-                            }
-                        ]
-                    }
-                ),
-            ]
-        )
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_tool_call_delta_accumulation(self, mock_create, provider):
+        chunks_list = [
+            _make_chunk(
+                content=None,
+                tool_calls=[
+                    ChoiceDeltaToolCall(
+                        index=0,
+                        id="call_1",
+                        function=ChoiceDeltaToolCallFunction(
+                            name="get_weather",
+                            arguments="",
+                        ),
+                        type="function",
+                    )
+                ],
+            ),
+            _make_chunk(
+                content=None,
+                tool_calls=[
+                    ChoiceDeltaToolCall(
+                        index=0,
+                        function=ChoiceDeltaToolCallFunction(
+                            arguments='{"city": ',
+                        ),
+                    )
+                ],
+            ),
+            _make_chunk(
+                content=None,
+                finish_reason="tool_calls",
+                tool_calls=[
+                    ChoiceDeltaToolCall(
+                        index=0,
+                        function=ChoiceDeltaToolCallFunction(
+                            arguments='"London"}',
+                        ),
+                    )
+                ],
+            ),
+        ]
+        mock_create.return_value = AsyncMock(
+            return_value=_async_iter(chunks_list)
+        )()
 
         chunks = []
         async for chunk in provider.stream_chat([], []):
@@ -348,44 +285,37 @@ class TestStreamChat:
         assert chunks[2].tool_calls[0].name == "get_weather"
         assert chunks[2].tool_calls[0].args == {"city": "London"}
 
-    @patch("httpx.AsyncClient")
-    async def test_multiple_tool_indices(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {
-                                "delta": {
-                                    "tool_calls": [
-                                        {
-                                            "index": 0,
-                                            "id": "c1",
-                                            "function": {
-                                                "name": "tool_a",
-                                                "arguments": '{"x": 1}',
-                                            },
-                                        },
-                                        {
-                                            "index": 1,
-                                            "id": "c2",
-                                            "function": {
-                                                "name": "tool_b",
-                                                "arguments": '{"y": 2}',
-                                            },
-                                        },
-                                    ],
-                                },
-                                "finish_reason": "tool_calls",
-                            }
-                        ]
-                    }
-                ),
-            ]
-        )
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_multiple_tool_indices(self, mock_create, provider):
+        chunks_list = [
+            _make_chunk(
+                content=None,
+                finish_reason="tool_calls",
+                tool_calls=[
+                    ChoiceDeltaToolCall(
+                        index=0,
+                        id="c1",
+                        function=ChoiceDeltaToolCallFunction(
+                            name="tool_a",
+                            arguments='{"x": 1}',
+                        ),
+                        type="function",
+                    ),
+                    ChoiceDeltaToolCall(
+                        index=1,
+                        id="c2",
+                        function=ChoiceDeltaToolCallFunction(
+                            name="tool_b",
+                            arguments='{"y": 2}',
+                        ),
+                        type="function",
+                    ),
+                ],
+            )
+        ]
+        mock_create.return_value = AsyncMock(
+            return_value=_async_iter(chunks_list)
+        )()
 
         chunks = []
         async for chunk in provider.stream_chat([], []):
@@ -395,40 +325,22 @@ class TestStreamChat:
         assert chunks[0].tool_calls[0].name == "tool_a"
         assert chunks[0].tool_calls[1].name == "tool_b"
 
-    @patch("httpx.AsyncClient")
-    async def test_error_in_stream_response(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                "data: " + json.dumps({"error": "rate limited"}),
-            ]
-        )
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_stream_connection_error(self, mock_create, provider):
+        mock_create.return_value = AsyncMock(
+            side_effect=APIConnectionError(request=MagicMock())
+        )()
 
-        with pytest.raises(ChatResponseError):
+        with pytest.raises(ChatConnectionError):
             async for _ in provider.stream_chat([], []):
                 pass
 
-    @patch("httpx.AsyncClient")
-    async def test_skips_empty_choices(self, mock_client_class, provider):
-        mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
-        mock_client.stream.return_value = self._build_mock_stream(
-            [
-                "data: " + json.dumps({"choices": []}),
-                "data: "
-                + json.dumps(
-                    {
-                        "choices": [
-                            {"delta": {"content": "final"}, "finish_reason": "stop"}
-                        ]
-                    }
-                ),
-            ]
-        )
+    @patch("openai.resources.chat.completions.AsyncCompletions.create")
+    async def test_stream_timeout_error(self, mock_create, provider):
+        mock_create.return_value = AsyncMock(
+            side_effect=APITimeoutError(request=MagicMock())
+        )()
 
-        chunks = []
-        async for chunk in provider.stream_chat([], []):
-            chunks.append(chunk)
-
-        assert len(chunks) == 1
+        with pytest.raises(ChatTimeoutError):
+            async for _ in provider.stream_chat([], []):
+                pass

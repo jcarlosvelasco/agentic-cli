@@ -3,7 +3,6 @@ from os import path
 
 from dotenv import load_dotenv
 
-from src.shared.utils import build_system_prompt, compact
 from src.agent.Agent import Agent
 from src.llm.providers import create_provider
 from src.mcp_integration.mcp_registry import MCPRegistry
@@ -17,6 +16,7 @@ from src.shared.console import (
     get_user_input,
     streaming_panel,
 )
+from src.shared.utils import build_system_prompt, compact
 from src.tools.registry import ToolRegistry
 
 

@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.138.0",
     "httpx>=0.28.1",
     "mcp>=1.27.2",
+    "openai>=2.45.0",
     "prompt-toolkit>=3.0.52",
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",

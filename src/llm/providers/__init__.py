@@ -1,9 +1,9 @@
 import os
 from typing import Any
 
+from llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.config.LLMConfig import LLMConfig
 from src.llm.interfaces.BaseLLMProvider import BaseLLMProvider
-from src.llm.providers.ollama.OllamaProvider import OllamaProvider
 from src.llm.providers.openrouter.OpenRouterProvider import OpenRouterProvider
 
 

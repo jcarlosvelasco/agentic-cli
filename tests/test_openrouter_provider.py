@@ -223,12 +223,13 @@ class TestStreamChat:
         ):
             chunks.append(chunk)
 
-        assert len(chunks) == 3
+        assert len(chunks) == 4
         assert chunks[0].content == "Hello"
         assert chunks[0].done is False
         assert chunks[1].content == " World"
         assert chunks[2].content == ""
-        assert chunks[2].done is True
+        assert chunks[2].done is False
+        assert chunks[3].done is True
 
     @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_tool_call_delta_accumulation(self, mock_create, provider):
@@ -279,11 +280,11 @@ class TestStreamChat:
         async for chunk in provider.stream_chat([], []):
             chunks.append(chunk)
 
-        assert len(chunks) == 3
-        assert chunks[2].done is True
-        assert len(chunks[2].tool_calls) == 1
-        assert chunks[2].tool_calls[0].name == "get_weather"
-        assert chunks[2].tool_calls[0].args == {"city": "London"}
+        assert len(chunks) == 4
+        assert chunks[3].done is True
+        assert len(chunks[3].tool_calls) == 1
+        assert chunks[3].tool_calls[0].name == "get_weather"
+        assert chunks[3].tool_calls[0].args == {"city": "London"}
 
     @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_multiple_tool_indices(self, mock_create, provider):
@@ -321,9 +322,11 @@ class TestStreamChat:
         async for chunk in provider.stream_chat([], []):
             chunks.append(chunk)
 
-        assert len(chunks[0].tool_calls) == 2
-        assert chunks[0].tool_calls[0].name == "tool_a"
-        assert chunks[0].tool_calls[1].name == "tool_b"
+        assert len(chunks) == 2
+        assert chunks[1].done is True
+        assert len(chunks[1].tool_calls) == 2
+        assert chunks[1].tool_calls[0].name == "tool_a"
+        assert chunks[1].tool_calls[1].name == "tool_b"
 
     @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_stream_connection_error(self, mock_create, provider):

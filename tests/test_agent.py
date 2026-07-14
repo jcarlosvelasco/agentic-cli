@@ -114,9 +114,11 @@ class TestAgentStreamLoop:
             config=_make_config(confirm_execution=False),
         )
 
-        result = await agent._stream_loop()
+        result_text, result_usage = await agent._stream_loop()
 
-        assert result == "Hello World"
+        assert result_text == "Hello World"
+        assert result_usage["input_tokens"] == 0
+        assert result_usage["output_tokens"] == 0
         assert len(agent.messages) == 1
         assert agent.messages[0].role == MessageRole.ASSISTANT
         assert agent.messages[0].content == "Hello World"
@@ -159,9 +161,9 @@ class TestAgentStreamLoop:
         agent.runner = AsyncMock()
         agent.runner.run.return_value = ToolResult(success=True, data="tool_output")
 
-        result = await agent._stream_loop()
+        result_text, result_usage = await agent._stream_loop()
 
-        assert result == "done"
+        assert result_text == "done"
         agent.runner.run.assert_awaited_once_with(
             mock_tool, tool_call.args, should_confirm=False
         )
@@ -207,9 +209,9 @@ class TestAgentStreamLoop:
         agent.runner = AsyncMock()
         agent.runner.run.return_value = ToolResult(success=True, data="res")
 
-        result = await agent._stream_loop()
+        result_text, result_usage = await agent._stream_loop()
 
-        assert result == "done"
+        assert result_text == "done"
         assert agent.runner.run.await_count == 2
 
     @patch("src.agent.Agent.streaming_panel")
@@ -245,9 +247,9 @@ class TestAgentStreamLoop:
             config=_make_config(confirm_execution=False),
         )
 
-        result = await agent._stream_loop()
+        result_text, result_usage = await agent._stream_loop()
 
-        assert result == "done"
+        assert result_text == "done"
         tool_msgs = [m for m in agent.messages if m.role == MessageRole.TOOL]
         assert len(tool_msgs) == 0
 
@@ -291,8 +293,8 @@ class TestAgentStreamLoop:
         agent.runner = AsyncMock()
         agent.runner.run.return_value = ToolResult(success=True, data="output")
 
-        result = await agent._stream_loop()
-        assert result == "Max iterations reached"
+        result_text, result_usage = await agent._stream_loop()
+        assert result_text == "Max iterations reached"
 
     @patch("src.agent.Agent.streaming_panel")
     @patch("src.agent.Agent.confirm_execution")
@@ -368,8 +370,8 @@ class TestAgentStreamLoop:
             config=_make_config(confirm_execution=False),
         )
 
-        result = await agent.stream_run("my task")
-        assert result == "Done"
+        result_text, result_usage = await agent.stream_run("my task")
+        assert result_text == "Done"
         assert agent.messages[0].role == MessageRole.SYSTEM
         assert agent.messages[0].content == "You are helpful."
         assert agent.messages[1].role == MessageRole.USER
@@ -404,9 +406,9 @@ class TestAgentLoop:
             config=_make_config(confirm_execution=False),
         )
 
-        result = await agent.run("my task")
+        result_text, result_usage = await agent.run("my task")
 
-        assert result == "Hello World"
+        assert result_text == "Hello World"
         assert agent.messages[0].role == MessageRole.USER
 
     @patch("src.agent.Agent.thinking_spinner")
@@ -445,8 +447,8 @@ class TestAgentLoop:
         agent.runner = AsyncMock()
         agent.runner.run.return_value = ToolResult(success=True, data="tool_out")
 
-        result = await agent.chat("do something")
+        result_text, result_usage = await agent.chat("do something")
 
-        assert result == "Final answer"
+        assert result_text == "Final answer"
         assert agent.runner.run.await_count == 1
         assert agent.messages[-1].role == MessageRole.ASSISTANT

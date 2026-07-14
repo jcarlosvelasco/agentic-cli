@@ -248,12 +248,13 @@ class TestStreamChat:
         ):
             chunks.append(chunk)
 
-        assert len(chunks) == 3
+        assert len(chunks) == 4
         assert chunks[0].content == "Hello"
         assert chunks[0].done is False
         assert chunks[1].content == " World"
         assert chunks[2].content == ""
-        assert chunks[2].done is True
+        assert chunks[2].done is False
+        assert chunks[3].done is True
 
     @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_stream_with_tool_calls(self, mock_create, provider):
@@ -283,11 +284,12 @@ class TestStreamChat:
         ):
             chunks.append(chunk)
 
-        assert len(chunks) == 1
-        assert chunks[0].done is True
-        assert len(chunks[0].tool_calls) == 1
-        assert chunks[0].tool_calls[0].name == "tool"
-        assert chunks[0].tool_calls[0].args == {"k": "v"}
+        assert len(chunks) == 2
+        assert chunks[0].done is False
+        assert chunks[1].done is True
+        assert len(chunks[1].tool_calls) == 1
+        assert chunks[1].tool_calls[0].name == "tool"
+        assert chunks[1].tool_calls[0].args == {"k": "v"}
 
     @patch("openai.resources.chat.completions.AsyncCompletions.create")
     async def test_stream_connection_error(self, mock_create, provider):

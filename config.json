@@ -26,6 +26,6 @@
     "confirm_execution": true
   },
   "ui": {
-    "streaming": true
+    "streaming": false
   }
 }

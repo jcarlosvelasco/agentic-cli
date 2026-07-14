@@ -88,9 +88,6 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
         except APIStatusError as e:
             raise ChatResponseError(str(e), e.status_code) from e
 
-        self.logger.debug("\nOpenAI response: %s", response.model_dump())
-        self.logger.debug("\nOpenAI response: %s", response)
-
         message = response.choices[0].message
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens

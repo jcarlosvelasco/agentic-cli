@@ -98,12 +98,15 @@ class Agent(BaseModel):
     ) -> tuple[str, dict[str, int]]:
         for _ in range(self.max_iterations):
             try:
-                full_content, last_tool_calls, input_tokens, output_tokens = (
-                    await retry_with_backoff(
-                        lambda: self._consume_stream_once(on_content),
-                        max_retries=self.config.llm.retry_max_attempts,
-                        base_delay=self.config.llm.retry_base_delay,
-                    )
+                (
+                    full_content,
+                    last_tool_calls,
+                    input_tokens,
+                    output_tokens,
+                ) = await retry_with_backoff(
+                    lambda: self._consume_stream_once(on_content),
+                    max_retries=self.config.llm.retry_max_attempts,
+                    base_delay=self.config.llm.retry_base_delay,
                 )
             except ChatResponseError as e:
                 msg = f"LLM request failed after retries: {e.message}"

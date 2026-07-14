@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from os import path
 
 from dotenv import load_dotenv
@@ -20,14 +19,6 @@ from src.shared.console import (
 )
 from src.shared.utils import build_system_prompt, compact
 from src.tools.registry import ToolRegistry
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-5s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
-logger = logging.getLogger(__name__)
 
 
 async def main():

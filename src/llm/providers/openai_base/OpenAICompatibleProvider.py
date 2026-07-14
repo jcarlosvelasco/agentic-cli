@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import Any, AsyncIterator, List, cast
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
@@ -28,7 +27,6 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
     ):
         self.model = model
         self.client = AsyncOpenAI(base_url=base_url, api_key=api_key)
-        self.logger = logging.getLogger(__name__)
 
     def format_messages(
         self, messages: List[Message]
@@ -89,8 +87,8 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             raise ChatResponseError(str(e), e.status_code) from e
 
         message = response.choices[0].message
-        input_tokens = response.usage.prompt_tokens
-        output_tokens = response.usage.completion_tokens
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
 
         tool_calls: List[ToolCall] = [
             ToolCall(
@@ -129,8 +127,33 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             raise ChatConnectionError("Cannot connect to provider") from e
 
         tool_call_chunks: dict[int, dict[str, Any]] = {}
+        finished = False
 
         async for chunk in stream:
+            if not chunk.choices:
+                if chunk.usage:
+                    input_tokens = chunk.usage.prompt_tokens or 0
+                    output_tokens = chunk.usage.completion_tokens or 0
+                    if not finished:
+                        finished = True
+                        yield StreamLLMChatResponse(
+                            done=True,
+                            content=None,
+                            tool_calls=[
+                                ToolCall(
+                                    id=v["id"],
+                                    name=v["name"],
+                                    args=json.loads(v["arguments"])
+                                    if v["arguments"]
+                                    else {},
+                                )
+                                for v in tool_call_chunks.values()
+                            ],
+                            input_token_count=input_tokens,
+                            output_token_count=output_tokens,
+                        )
+                continue
+
             choice = chunk.choices[0]
             delta = choice.delta
             is_last = choice.finish_reason is not None
@@ -159,6 +182,8 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
                 ]
                 input_tokens = chunk.usage.prompt_tokens if chunk.usage else 0
                 output_tokens = chunk.usage.completion_tokens if chunk.usage else 0
+                if input_tokens or output_tokens:
+                    finished = True
                 yield StreamLLMChatResponse(
                     done=True,
                     content=delta.content,

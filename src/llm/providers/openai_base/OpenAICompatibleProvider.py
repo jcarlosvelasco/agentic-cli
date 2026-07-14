@@ -127,31 +127,30 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             raise ChatConnectionError("Cannot connect to provider") from e
 
         tool_call_chunks: dict[int, dict[str, Any]] = {}
-        finished = False
+        done_yielded = False
 
         async for chunk in stream:
             if not chunk.choices:
-                if chunk.usage:
+                if chunk.usage and not done_yielded:
+                    done_yielded = True
                     input_tokens = chunk.usage.prompt_tokens or 0
                     output_tokens = chunk.usage.completion_tokens or 0
-                    if not finished:
-                        finished = True
-                        yield StreamLLMChatResponse(
-                            done=True,
-                            content=None,
-                            tool_calls=[
-                                ToolCall(
-                                    id=v["id"],
-                                    name=v["name"],
-                                    args=json.loads(v["arguments"])
-                                    if v["arguments"]
-                                    else {},
-                                )
-                                for v in tool_call_chunks.values()
-                            ],
-                            input_token_count=input_tokens,
-                            output_token_count=output_tokens,
-                        )
+                    yield StreamLLMChatResponse(
+                        done=True,
+                        content=None,
+                        tool_calls=[
+                            ToolCall(
+                                id=v["id"],
+                                name=v["name"],
+                                args=json.loads(v["arguments"])
+                                if v["arguments"]
+                                else {},
+                            )
+                            for v in tool_call_chunks.values()
+                        ],
+                        input_token_count=input_tokens,
+                        output_token_count=output_tokens,
+                    )
                 continue
 
             choice = chunk.choices[0]
@@ -172,26 +171,48 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
                             acc["arguments"] += tc_delta.function.arguments
 
             if is_last:
-                tool_calls = [
-                    ToolCall(
-                        id=v["id"],
-                        name=v["name"],
-                        args=json.loads(v["arguments"]) if v["arguments"] else {},
+                if chunk.usage and not done_yielded:
+                    done_yielded = True
+                    input_tokens = chunk.usage.prompt_tokens or 0
+                    output_tokens = chunk.usage.completion_tokens or 0
+                    yield StreamLLMChatResponse(
+                        done=True,
+                        content=delta.content,
+                        tool_calls=[
+                            ToolCall(
+                                id=v["id"],
+                                name=v["name"],
+                                args=json.loads(v["arguments"])
+                                if v["arguments"]
+                                else {},
+                            )
+                            for v in tool_call_chunks.values()
+                        ],
+                        input_token_count=input_tokens,
+                        output_token_count=output_tokens,
                     )
-                    for v in tool_call_chunks.values()
-                ]
-                input_tokens = chunk.usage.prompt_tokens if chunk.usage else 0
-                output_tokens = chunk.usage.completion_tokens if chunk.usage else 0
-                if input_tokens or output_tokens:
-                    finished = True
-                yield StreamLLMChatResponse(
-                    done=True,
-                    content=delta.content,
-                    tool_calls=tool_calls,
-                    input_token_count=input_tokens,
-                    output_token_count=output_tokens,
-                )
+                else:
+                    yield StreamLLMChatResponse(
+                        done=False, content=delta.content, tool_calls=[]
+                    )
             else:
                 yield StreamLLMChatResponse(
                     done=False, content=delta.content, tool_calls=[]
                 )
+
+        if not done_yielded:
+            tool_calls = [
+                ToolCall(
+                    id=v["id"],
+                    name=v["name"],
+                    args=json.loads(v["arguments"]) if v["arguments"] else {},
+                )
+                for v in tool_call_chunks.values()
+            ]
+            yield StreamLLMChatResponse(
+                done=True,
+                content=None,
+                tool_calls=tool_calls,
+                input_token_count=0,
+                output_token_count=0,
+            )

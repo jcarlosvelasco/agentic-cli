@@ -134,8 +134,7 @@ src/
 ├── __init__.py
 ├── __main__.py                        # Unified entry point — dispatches CLI/API mode
 ├── agent/
-│   ├── Agent.py                       # Core agent loop and streaming loop
-│   └── prompts.py                     # System prompt templates
+│   └── Agent.py                       # Core agent loop and streaming loop
 ├── api/
 │   ├── api.py                         # FastAPI app with /chat and /chat/stream
 │   └── schema/
@@ -156,41 +155,59 @@ src/
 │   ├── ToolsConfig.py                 # Tool-specific configuration
 │   └── UIConfig.py                    # UI settings (streaming, etc.)
 ├── llm/
-│   ├── interfaces/BaseLLMProvider.py  # Abstract base class for LLM providers
-│   ├── providers/                     # Each provider is a self-contained package
+│   ├── interfaces/
+│   │   ├── BaseLLMProvider.py         # Abstract base class for LLM providers
+│   │   └── StreamLLMChatResponse.py   # Streaming response model
+│   ├── providers/
 │   │   ├── __init__.py                # Factory: create_provider(config)
-│   │   ├── ollama/                    # Ollama implementation
-│   │   │   ├── OllamaProvider.py
-│   │   │   └── OllamaMessage.py
-│   │   └── openrouter/                # OpenRouter implementation
-│   │       ├── OpenRouterProvider.py
-│   │       └── OpenRouterMessage.py
-│   ├── schema/                        # Data models
+│   │   ├── openai_base/               # Shared base for OpenAI-compatible providers
+│   │   │   ├── OpenAICompatibleProvider.py  # Pre-built chat/stream/format_messages
+│   │   │   └── BaseOpenAIMessage.py         # Base TypedDicts for OpenAI format
+│   │   ├── ollama/
+│   │   │   └── OllamaProvider.py      # Extends OpenAICompatibleProvider
+│   │   └── openrouter/
+│   │       └── OpenRouterProvider.py  # Extends OpenAICompatibleProvider
+│   ├── schema/
 │   │   ├── Message.py
 │   │   ├── ToolCall.py
 │   │   ├── LLMChatResponse.py
 │   │   └── Chat*Error.py
 │   └── utils.py                       # retry_with_backoff helper
 ├── mcp_integration/
+│   ├── __init__.py
+│   ├── client.py                      # MCP client connection logic
+│   ├── mcp_config.py                  # MCP configuration parsing
 │   ├── mcp_registry.py                # MCP server discovery and tool loading
-│   └── mcp.json                       # MCP server configuration
+│   ├── mcp.json                       # MCP server configuration
+│   └── utils.py                       # MCP utility helpers
 ├── memory/
 │   ├── Session.py                     # Session data model
 │   ├── SessionIndex.py                # Session index manager
+│   ├── data/                          # Persistent session storage
 │   ├── preamble.py                    # Session preamble generation
 │   ├── summarize.py                   # Session summarization logic
 │   └── utils.py                       # Memory utilities
-├── tools/
-│   ├── interfaces/Tool.py             # Abstract Tool + ToolResult
-│   ├── registry.py                    # Central tool registry
-│   ├── ToolRunner.py                  # Interactive executor with confirmation
-│   └── tools/
-│
 ├── shared/
+│   ├── __init__.py
 │   ├── config.py                      # JSON config loader
 │   ├── console.py                     # Rich console helpers
 │   ├── main.py                        # CLI entry point (agent loop)
 │   └── utils.py                       # system_prompt builder, compaction dispatch
+├── tools/
+│   ├── __init__.py
+│   ├── interfaces/
+│   │   └── Tool.py                    # Abstract Tool + ToolResult
+│   ├── registry.py                    # Central tool registry
+│   ├── ToolRunner.py                  # Interactive executor with confirmation
+│   └── tools/
+│       ├── bash.py
+│       ├── launch_subagent.py
+│       ├── mcp_tool.py
+│       ├── read_file.py
+│       ├── recall.py
+│       ├── weather.py
+│       ├── web_search.py
+│       └── write_file.py
 └── config.json                        # User-facing configuration file
 ```
 
@@ -217,6 +234,30 @@ The active strategy and its parameters are configured in `config.json` under the
 ## Adding a LLM provider
 
 Adding a new provider is plug and play — no core code needs to be modified beyond the provider package itself.
+
+### Option A: OpenAI-compatible provider (recommended)
+
+If your provider supports the OpenAI SDK (or exposes an OpenAI-compatible API), you can extend `OpenAICompatibleProvider`. This class already implements `format_messages`, `chat`, and `stream_chat` — you only need to pass `model`, `base_url`, and optionally `api_key` to the constructor.
+
+1. **Create a package** under `src/llm/providers/<name>/` with a single file:
+   - `XProvider.py` — a class that inherits from `OpenAICompatibleProvider`:
+
+```python
+from src.llm.providers.openai_base.OpenAICompatibleProvider import OpenAICompatibleProvider
+
+class MyProvider(OpenAICompatibleProvider):
+    def __init__(self, model: str, base_url: str, api_key: str):
+        super().__init__(model=model, base_url=base_url, api_key=api_key)
+```
+
+2. **Register it** in `src/llm/providers/__init__.py` (same as Option B, step 2).
+3. **Configure it** via `config.json`.
+
+This is what `OllamaProvider` and `OpenRouterProvider` do.
+
+### Option B: Custom provider from scratch
+
+If your provider does **not** support the OpenAI SDK, extend `BaseLLMProvider` directly.
 
 1. **Create a package** under `src/llm/providers/<name>/` with at least two files:
    - `XProvider.py` — a class that inherits from `BaseLLMProvider` and implements:

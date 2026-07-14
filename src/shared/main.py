@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from os import path
 
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ from src.memory.summarize import summarize
 from src.shared.config import load_config
 from src.shared.console import (
     display_assistant_message,
+    display_token_usage,
     display_warning,
     display_welcome,
     get_user_input,
@@ -18,6 +20,14 @@ from src.shared.console import (
 )
 from src.shared.utils import build_system_prompt, compact
 from src.tools.registry import ToolRegistry
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-5s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger = logging.getLogger(__name__)
 
 
 async def main():
@@ -62,12 +72,14 @@ async def main():
 
             if config.ui.streaming:
                 async with streaming_panel(agent.name) as (update, ctrl):
-                    await agent._stream_chat(
+                    _, usage = await agent._stream_chat(
                         user_input, on_content=update, ui_control=ctrl
                     )
+                if usage:
+                    display_token_usage(usage)
             else:
-                result = await agent.chat(user_input)
-                display_assistant_message(agent.name, result)
+                result, usage = await agent.chat(user_input)
+                display_assistant_message(agent.name, result, usage)
     except KeyboardInterrupt:
         if config.memory.enabled:
             display_warning("Interrupted by user. Summarizing session...")

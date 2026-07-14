@@ -75,8 +75,10 @@ async def streaming_chat(query: str):
 
     async def run_agent():
         try:
-            result = await agent._stream_chat(query, on_content=on_content)
-            await queue.put(json.dumps({"done": True, "content": result}))
+            result, usage = await agent._stream_chat(query, on_content=on_content)
+            await queue.put(
+                json.dumps({"done": True, "content": result, "usage": usage})
+            )
         except Exception as e:
             await queue.put(json.dumps({"error": str(e)}))
         finally:
@@ -94,15 +96,15 @@ async def streaming_chat(query: str):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-async def agent_loop(query: str) -> str:
+async def agent_loop(query: str):
     if _agent is None:
         raise RuntimeError("Agent not initialized")
 
     if _config.compaction.enabled:
         await compact(_agent, _config.compaction.strategy, _provider, _config, True)
 
-    result = await _agent.chat(query)
-    return result
+    result, usage = await _agent.chat(query)
+    return result, usage
 
 
 @app.get("/")
@@ -112,8 +114,8 @@ def read_root():
 
 @app.post("/chat")
 async def chat(body: ChatBody):
-    result = await agent_loop(body.query)
-    return {"result": result}
+    result, usage = await agent_loop(body.query)
+    return {"result": result, "usage": usage}
 
 
 @app.post("/chat/stream")

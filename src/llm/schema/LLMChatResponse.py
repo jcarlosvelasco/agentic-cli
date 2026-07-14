@@ -8,6 +8,8 @@ from src.llm.schema.ToolCall import ToolCall
 class LLMChatResponse(BaseModel):
     content: str
     tool_calls: List[ToolCall] = []
+    input_token_count: int = 0
+    output_token_count: int = 0
 
     @property
     def has_tool_calls(self) -> bool:

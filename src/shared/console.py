@@ -37,7 +37,9 @@ def display_user_message(content: str) -> None:
     console.print(panel)
 
 
-def display_assistant_message(agent_name: str, content: str) -> None:
+def display_assistant_message(
+    agent_name: str, content: str, usage: dict[str, int] | None = None
+) -> None:
     panel = Panel(
         Markdown(content),
         title=f"[green]{agent_name}[/]",
@@ -46,6 +48,8 @@ def display_assistant_message(agent_name: str, content: str) -> None:
         padding=(0, 1),
     )
     console.print(panel)
+    if usage:
+        display_token_usage(usage)
 
 
 def display_tool_call(agent_name: str, name: str, args: object) -> None:
@@ -59,6 +63,14 @@ def display_tool_result(agent_name: str, data: dict | str | None) -> None:
 
 def display_compacting(count: int) -> None:
     console.print(f"\n[dim]Compacting {count} messages...[/dim]")
+
+
+def display_token_usage(usage: dict[str, int]) -> None:
+    input_t = usage.get("input_tokens", 0)
+    output_t = usage.get("output_tokens", 0)
+    console.print(
+        f"  [dim]tokens: {input_t} in / {output_t} out[/dim]"
+    )
 
 
 async def get_user_input() -> str:
@@ -75,6 +87,7 @@ def confirm_execution(tool_name: str, tool_input: object) -> bool:
 class LiveController:
     def __init__(self):
         self.live: Live | None = None
+        self.usage: dict[str, int] | None = None
 
     def pause(self) -> None:
         if self.live:

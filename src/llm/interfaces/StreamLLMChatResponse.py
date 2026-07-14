@@ -9,3 +9,5 @@ class StreamLLMChatResponse(BaseModel):
     content: str | None = None
     tool_calls: List[ToolCall] = []
     done: bool = False
+    input_token_count: int = 0
+    output_token_count: int = 0

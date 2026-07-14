@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, AsyncIterator, List, cast
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
@@ -27,6 +28,7 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
     ):
         self.model = model
         self.client = AsyncOpenAI(base_url=base_url, api_key=api_key)
+        self.logger = logging.getLogger(__name__)
 
     def format_messages(
         self, messages: List[Message]
@@ -86,7 +88,12 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
         except APIStatusError as e:
             raise ChatResponseError(str(e), e.status_code) from e
 
+        self.logger.debug("\nOpenAI response: %s", response.model_dump())
+        self.logger.debug("\nOpenAI response: %s", response)
+
         message = response.choices[0].message
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
 
         tool_calls: List[ToolCall] = [
             ToolCall(
@@ -97,7 +104,12 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             for call in (message.tool_calls or [])
         ]
 
-        return LLMChatResponse(content=message.content or "", tool_calls=tool_calls)
+        return LLMChatResponse(
+            content=message.content or "",
+            tool_calls=tool_calls,
+            input_token_count=input_tokens,
+            output_token_count=output_tokens,
+        )
 
     async def stream_chat(
         self, messages: List[Message], tools: List[Tool], temperature: float = 0.0
@@ -107,6 +119,7 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
             "messages": self.format_messages(messages),
             "temperature": temperature,
             "stream": True,
+            "stream_options": {"include_usage": True},
         }
         tool_schemas = [self.get_openai_schema(t) for t in tools]
         if tool_schemas:
@@ -147,8 +160,14 @@ class OpenAICompatibleProvider(BaseLLMProvider[ChatCompletionMessageParam]):
                     )
                     for v in tool_call_chunks.values()
                 ]
+                input_tokens = chunk.usage.prompt_tokens if chunk.usage else 0
+                output_tokens = chunk.usage.completion_tokens if chunk.usage else 0
                 yield StreamLLMChatResponse(
-                    done=True, content=delta.content, tool_calls=tool_calls
+                    done=True,
+                    content=delta.content,
+                    tool_calls=tool_calls,
+                    input_token_count=input_tokens,
+                    output_token_count=output_tokens,
                 )
             else:
                 yield StreamLLMChatResponse(

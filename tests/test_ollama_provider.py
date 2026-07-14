@@ -1,4 +1,5 @@
 import json
+from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -7,6 +8,8 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import (
     Choice as ChunkChoice,
+)
+from openai.types.chat.chat_completion_chunk import (
     ChoiceDelta,
     ChoiceDeltaToolCall,
     ChoiceDeltaToolCallFunction,
@@ -39,9 +42,6 @@ def mock_tool():
 class MockArgsTool(MockTool):
     def __init__(self):
         super().__init__(name="search")
-
-
-from typing import AsyncIterator, List
 
 
 async def _async_iter(items: list) -> AsyncIterator:
@@ -239,9 +239,7 @@ class TestStreamChat:
             _make_chunk(content=" World", finish_reason=None),
             _make_chunk(content="", finish_reason="stop"),
         ]
-        mock_create.return_value = AsyncMock(
-            return_value=_async_iter(chunks_list)
-        )()
+        mock_create.return_value = AsyncMock(return_value=_async_iter(chunks_list))()
 
         chunks = []
         async for chunk in provider.stream_chat(
@@ -276,9 +274,7 @@ class TestStreamChat:
                 ],
             )
         ]
-        mock_create.return_value = AsyncMock(
-            return_value=_async_iter(chunks_list)
-        )()
+        mock_create.return_value = AsyncMock(return_value=_async_iter(chunks_list))()
 
         chunks = []
         async for chunk in provider.stream_chat(
